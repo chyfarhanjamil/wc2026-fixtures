@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FIFA World Cup 2026 – Team Fixtures</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold: #C9A84C;
+    --gold-light: #F0D080;
+    --dark: #0a0e1a;
+    --darker: #060910;
+    --card-bg: #111827;
+    --card-border: #1e2d45;
+    --text: #e8eaf0;
+    --muted: #7a8499;
+    --win: #22c55e;
+    --accent: #3b82f6;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--darker);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    background-image:
+      radial-gradient(ellipse at 20% 0%, rgba(201,168,76,0.08) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 100%, rgba(59,130,246,0.06) 0%, transparent 50%);
+  }
+
+  header {
+    text-align: center;
+    padding: 48px 20px 32px;
+    position: relative;
+  }
+
+  header::after {
+    content: '';
+    display: block;
+    width: 120px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    margin: 20px auto 0;
+  }
+
+  .year-badge {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(72px, 12vw, 130px);
+    line-height: 0.85;
+    color: transparent;
+    -webkit-text-stroke: 1px rgba(201,168,76,0.25);
+    letter-spacing: 4px;
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  header h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(28px, 5vw, 52px);
+    letter-spacing: 3px;
+    color: var(--gold);
+    position: relative;
+    z-index: 1;
+    margin-top: 40px;
+  }
+
+  header p {
+    color: var(--muted);
+    font-size: 13px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-top: 6px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .controls {
+    max-width: 1200px;
+    margin: 0 auto 32px;
+    padding: 0 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .search-wrap {
+    position: relative;
+  }
+
+  .search-wrap input {
+    width: 100%;
+    padding: 14px 20px 14px 48px;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    color: var(--text);
+    font-size: 15px;
+    font-family: 'DM Sans', sans-serif;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .search-wrap input:focus { border-color: var(--gold); }
+
+  .search-wrap svg {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+  }
+
+  .group-tabs {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .group-tab {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--card-border);
+    background: transparent;
+    color: var(--muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: all 0.2s;
+  }
+
+  .group-tab:hover, .group-tab.active {
+    background: var(--gold);
+    border-color: var(--gold);
+    color: #000;
+  }
+
+  .teams-grid {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px 60px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+  }
+
+  .team-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    overflow: hidden;
+    transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .team-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(201,168,76,0.4);
+    box-shadow: 0 16px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(201,168,76,0.1);
+  }
+
+  .card-header {
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid var(--card-border);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card-header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(201,168,76,0.08), transparent 60%);
+  }
+
+  .flag-circle {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--gold), var(--gold-light));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(201,168,76,0.3);
+  }
+
+  .team-info h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 1.5px;
+    color: var(--text);
+  }
+
+  .group-label {
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--gold);
+    font-weight: 500;
+  }
+
+  .match-list {
+    padding: 12px 0;
+  }
+
+  .match-row {
+    padding: 10px 20px;
+    display: grid;
+    grid-template-columns: 70px 1fr 70px;
+    gap: 8px;
+    align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    transition: background 0.15s;
+  }
+
+  .match-row:last-child { border-bottom: none; }
+  .match-row:hover { background: rgba(255,255,255,0.03); }
+
+  .match-date {
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 500;
+  }
+
+  .match-vs {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    text-align: center;
+  }
+
+  .match-vs .highlight {
+    color: var(--gold-light);
+  }
+
+  .match-time {
+    font-size: 11px;
+    color: var(--accent);
+    text-align: right;
+    font-weight: 500;
+  }
+
+  .no-results {
+    grid-column: 1/-1;
+    text-align: center;
+    padding: 80px 20px;
+    color: var(--muted);
+    font-size: 16px;
+  }
+
+  .hidden { display: none; }
+
+  .count-badge {
+    display: inline-block;
+    background: rgba(201,168,76,0.15);
+    color: var(--gold);
+    border-radius: 20px;
+    padding: 2px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    margin-left: 8px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="year-badge">2026</div>
+  <h1>⚽ FIFA WORLD CUP 2026</h1>
+  <p>Group Stage Fixtures · All Teams</p>
+</header>
+
+<div class="controls">
+  <div class="search-wrap">
+    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+    </svg>
+    <input type="text" id="search" placeholder="Search team (e.g. Brazil, France, USA…)" oninput="filterCards()">
+  </div>
+  <div class="group-tabs" id="groupTabs"></div>
+</div>
+
+<div class="teams-grid" id="grid"></div>
+
+<script>
+const FLAGS = {
+  'Mexico': '🇲🇽', 'South Africa': '🇿🇦', 'Korea Republic': '🇰🇷', 'Czechia': '🇨🇿',
+  'Canada': '🇨🇦', 'Bosnia & Herzegovina': '🇧🇦', 'USA': '🇺🇸', 'Paraguay': '🇵🇾',
+  'Qatar': '🇶🇦', 'Switzerland': '🇨🇭', 'Brazil': '🇧🇷', 'Morocco': '🇲🇦',
+  'Haiti': '🇭🇹', 'Scotland': '🏴󠁧󠁢󠁳󠁣󠁴󠁿', 'Australia': '🇦🇺', 'Türkiye': '🇹🇷',
+  'Germany': '🇩🇪', 'Curaçao': '🇨🇼', 'Netherlands': '🇳🇱', 'Japan': '🇯🇵',
+  'Ivory Coast': '🇨🇮', 'Ecuador': '🇪🇨', 'Sweden': '🇸🇪', 'Tunisia': '🇹🇳',
+  'Spain': '🇪🇸', 'Cabo Verde': '🇨🇻', 'Belgium': '🇧🇪', 'Egypt': '🇪🇬',
+  'Saudi Arabia': '🇸🇦', 'Uruguay': '🇺🇾', 'Iran': '🇮🇷', 'New Zealand': '🇳🇿',
+  'France': '🇫🇷', 'Senegal': '🇸🇳', 'Iraq': '🇮🇶', 'Norway': '🇳🇴',
+  'Argentina': '🇦🇷', 'Algeria': '🇩🇿', 'Austria': '🇦🇹', 'Jordan': '🇯🇴',
+  'Portugal': '🇵🇹', 'Congo': '🇨🇬', 'England': '🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'Croatia': '🇭🇷',
+  'Ghana': '🇬🇭', 'Panama': '🇵🇦', 'Uzbekistan': '🇺🇿', 'Colombia': '🇨🇴',
+  'England': '🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'Ghana': '🇬🇭'
+};
+
+const RAW = [
+  // Group A
+  {d:'Jun 12',m:'Mexico vs South Africa',g:'A',t:'01:00 AM'},
+  {d:'Jun 12',m:'Korea Republic vs Czechia',g:'A',t:'08:00 AM'},
+  {d:'Jun 18',m:'Czechia vs South Africa',g:'A',t:'10:00 PM'},
+  {d:'Jun 19',m:'Mexico vs Korea Republic',g:'A',t:'07:00 AM'},
+  {d:'Jun 25',m:'Czechia vs Mexico',g:'A',t:'07:00 AM'},
+  {d:'Jun 25',m:'South Africa vs Korea Republic',g:'A',t:'07:00 AM'},
+  // Group B
+  {d:'Jun 13',m:'Canada vs Bosnia & Herzegovina',g:'B',t:'01:00 AM'},
+  {d:'Jun 14',m:'Qatar vs Switzerland',g:'B',t:'01:00 AM'},
+  {d:'Jun 19',m:'Switzerland vs Bosnia & Herzegovina',g:'B',t:'01:00 AM'},
+  {d:'Jun 19',m:'Canada vs Qatar',g:'B',t:'04:00 AM'},
+  {d:'Jun 25',m:'Switzerland vs Canada',g:'B',t:'01:00 AM'},
+  {d:'Jun 25',m:'Bosnia & Herzegovina vs Qatar',g:'B',t:'01:00 AM'},
+  // Group C
+  {d:'Jun 14',m:'Brazil vs Morocco',g:'C',t:'04:00 AM'},
+  {d:'Jun 14',m:'Haiti vs Scotland',g:'C',t:'07:00 AM'},
+  {d:'Jun 20',m:'Scotland vs Morocco',g:'C',t:'04:00 AM'},
+  {d:'Jun 20',m:'Brazil vs Haiti',g:'C',t:'06:30 AM'},
+  {d:'Jun 25',m:'Scotland vs Brazil',g:'C',t:'04:00 AM'},
+  {d:'Jun 25',m:'Morocco vs Haiti',g:'C',t:'04:00 AM'},
+  // Group D
+  {d:'Jun 13',m:'USA vs Paraguay',g:'D',t:'07:00 AM'},
+  {d:'Jun 14',m:'Australia vs Türkiye',g:'D',t:'10:00 AM'},
+  {d:'Jun 20',m:'USA vs Australia',g:'D',t:'01:00 AM'},
+  {d:'Jun 20',m:'Türkiye vs Paraguay',g:'D',t:'09:00 AM'},
+  {d:'Jun 26',m:'Türkiye vs USA',g:'D',t:'08:00 AM'},
+  {d:'Jun 26',m:'Paraguay vs Australia',g:'D',t:'08:00 AM'},
+  // Group E
+  {d:'Jun 14',m:'Germany vs Curaçao',g:'E',t:'11:00 PM'},
+  {d:'Jun 15',m:'Ivory Coast vs Ecuador',g:'E',t:'05:00 AM'},
+  {d:'Jun 21',m:'Germany vs Ivory Coast',g:'E',t:'02:00 AM'},
+  {d:'Jun 21',m:'Ecuador vs Curaçao',g:'E',t:'06:00 AM'},
+  {d:'Jun 26',m:'Curaçao vs Ivory Coast',g:'E',t:'02:00 AM'},
+  {d:'Jun 26',m:'Ecuador vs Germany',g:'E',t:'02:00 AM'},
+  // Group F
+  {d:'Jun 15',m:'Netherlands vs Japan',g:'F',t:'02:00 AM'},
+  {d:'Jun 15',m:'Sweden vs Tunisia',g:'F',t:'08:00 AM'},
+  {d:'Jun 20',m:'Netherlands vs Sweden',g:'F',t:'11:00 PM'},
+  {d:'Jun 21',m:'Tunisia vs Japan',g:'F',t:'10:00 AM'},
+  {d:'Jun 26',m:'Japan vs Sweden',g:'F',t:'05:00 AM'},
+  {d:'Jun 26',m:'Tunisia vs Netherlands',g:'F',t:'05:00 AM'},
+  // Group G
+  {d:'Jun 16',m:'Belgium vs Egypt',g:'G',t:'01:00 AM'},
+  {d:'Jun 16',m:'Iran vs New Zealand',g:'G',t:'07:00 AM'},
+  {d:'Jun 22',m:'Belgium vs Iran',g:'G',t:'01:00 AM'},
+  {d:'Jun 22',m:'New Zealand vs Egypt',g:'G',t:'07:00 AM'},
+  {d:'Jun 27',m:'Egypt vs Iran',g:'G',t:'09:00 AM'},
+  {d:'Jun 27',m:'New Zealand vs Belgium',g:'G',t:'09:00 AM'},
+  // Group H
+  {d:'Jun 15',m:'Spain vs Cabo Verde',g:'H',t:'10:00 PM'},
+  {d:'Jun 16',m:'Saudi Arabia vs Uruguay',g:'H',t:'04:00 AM'},
+  {d:'Jun 21',m:'Spain vs Saudi Arabia',g:'H',t:'10:00 PM'},
+  {d:'Jun 22',m:'Uruguay vs Cabo Verde',g:'H',t:'04:00 AM'},
+  {d:'Jun 27',m:'Cabo Verde vs Saudi Arabia',g:'H',t:'06:00 AM'},
+  {d:'Jun 27',m:'Uruguay vs Spain',g:'H',t:'06:00 AM'},
+  // Group I
+  {d:'Jun 17',m:'France vs Senegal',g:'I',t:'01:00 AM'},
+  {d:'Jun 17',m:'Iraq vs Norway',g:'I',t:'04:00 AM'},
+  {d:'Jun 23',m:'France vs Iraq',g:'I',t:'03:00 AM'},
+  {d:'Jun 23',m:'Norway vs Senegal',g:'I',t:'06:00 AM'},
+  {d:'Jun 27',m:'Norway vs France',g:'I',t:'01:00 AM'},
+  {d:'Jun 27',m:'Senegal vs Iraq',g:'I',t:'01:00 AM'},
+  // Group J
+  {d:'Jun 17',m:'Argentina vs Algeria',g:'J',t:'07:00 AM'},
+  {d:'Jun 17',m:'Austria vs Jordan',g:'J',t:'10:00 AM'},
+  {d:'Jun 22',m:'Argentina vs Austria',g:'J',t:'11:00 PM'},
+  {d:'Jun 23',m:'Jordan vs Algeria',g:'J',t:'09:00 AM'},
+  {d:'Jun 28',m:'Algeria vs Austria',g:'J',t:'08:00 AM'},
+  {d:'Jun 28',m:'Jordan vs Argentina',g:'J',t:'08:00 AM'},
+  // Group K
+  {d:'Jun 17',m:'Portugal vs Congo',g:'K',t:'11:00 PM'},
+  {d:'Jun 18',m:'Uzbekistan vs Colombia',g:'K',t:'08:00 AM'},
+  {d:'Jun 23',m:'Portugal vs Uzbekistan',g:'K',t:'11:00 PM'},
+  {d:'Jun 24',m:'Colombia vs Congo',g:'K',t:'08:00 AM'},
+  {d:'Jun 28',m:'Colombia vs Portugal',g:'K',t:'05:30 AM'},
+  {d:'Jun 28',m:'Congo vs Uzbekistan',g:'K',t:'05:30 AM'},
+  // Group L
+  {d:'Jun 18',m:'England vs Croatia',g:'L',t:'02:00 AM'},
+  {d:'Jun 18',m:'Ghana vs Panama',g:'L',t:'05:00 AM'},
+  {d:'Jun 24',m:'England vs Ghana',g:'L',t:'02:00 AM'},
+  {d:'Jun 24',m:'Panama vs Croatia',g:'L',t:'05:00 AM'},
+  {d:'Jun 28',m:'Panama vs England',g:'L',t:'03:00 AM'},
+  {d:'Jun 28',m:'Croatia vs Ghana',g:'L',t:'03:00 AM'},
+];
+
+// Build team → matches map
+const teamMap = {};
+RAW.forEach(({d,m,g,t}) => {
+  const [t1, t2] = m.split(' vs ');
+  [t1.trim(), t2.trim()].forEach(team => {
+    if (!teamMap[team]) teamMap[team] = {group: g, matches: []};
+    teamMap[team].matches.push({d, opponent: team === t1.trim() ? t2.trim() : t1.trim(), self: team, g, t, raw: m});
+  });
+});
+
+const teams = Object.keys(teamMap).sort();
+const groups = [...new Set(Object.values(teamMap).map(v => v.group))].sort();
+
+// Build group tabs
+const tabs = document.getElementById('groupTabs');
+const allBtn = document.createElement('button');
+allBtn.className = 'group-tab active';
+allBtn.textContent = 'All Groups';
+allBtn.onclick = () => { setGroup(null); };
+tabs.appendChild(allBtn);
+
+groups.forEach(g => {
+  const btn = document.createElement('button');
+  btn.className = 'group-tab';
+  btn.textContent = `Group ${g}`;
+  btn.onclick = () => setGroup(g);
+  tabs.appendChild(btn);
+});
+
+let activeGroup = null;
+
+function setGroup(g) {
+  activeGroup = g;
+  document.querySelectorAll('.group-tab').forEach((b,i) => {
+    b.classList.toggle('active', i === 0 ? g === null : b.textContent === `Group ${g}`);
+  });
+  filterCards();
+}
+
+function filterCards() {
+  const q = document.getElementById('search').value.toLowerCase();
+  const cards = document.querySelectorAll('.team-card');
+  let visible = 0;
+  cards.forEach(card => {
+    const name = card.dataset.team.toLowerCase();
+    const grp = card.dataset.group;
+    const matchSearch = !q || name.includes(q);
+    const matchGroup = !activeGroup || grp === activeGroup;
+    const show = matchSearch && matchGroup;
+    card.classList.toggle('hidden', !show);
+    if (show) visible++;
+  });
+  document.getElementById('noResults').classList.toggle('hidden', visible > 0);
+}
+
+// Render cards
+const grid = document.getElementById('grid');
+
+teams.forEach(team => {
+  const {group, matches} = teamMap[team];
+  const flag = FLAGS[team] || '🏳️';
+
+  const card = document.createElement('div');
+  card.className = 'team-card';
+  card.dataset.team = team;
+  card.dataset.group = group;
+
+  const rows = matches.map(({d, opponent, t, raw}) => {
+    const teams2 = raw.split(' vs ');
+    const label = `<span class="highlight">${teams2[0].trim()}</span> vs ${teams2[1].trim()}`;
+    return `
+      <div class="match-row">
+        <div class="match-date">${d}</div>
+        <div class="match-vs">${label}</div>
+        <div class="match-time">${t}</div>
+      </div>`;
+  }).join('');
+
+  card.innerHTML = `
+    <div class="card-header">
+      <div class="flag-circle">${flag}</div>
+      <div class="team-info">
+        <h2>${team}</h2>
+        <div class="group-label">Group ${group} <span class="count-badge">${matches.length} matches</span></div>
+      </div>
+    </div>
+    <div class="match-list">${rows}</div>
+  `;
+
+  grid.appendChild(card);
+});
+
+// No results placeholder
+const noRes = document.createElement('div');
+noRes.id = 'noResults';
+noRes.className = 'no-results hidden';
+noRes.textContent = 'No teams match your search.';
+grid.appendChild(noRes);
+</script>
+</body>
+</html>
