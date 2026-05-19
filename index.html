@@ -6,7 +6,6 @@
 <meta property="og:title" content="FIFA World Cup 2026 Fixtures">
 <meta property="og:description" content="Interactive fixture viewer for all 32 teams at World Cup 2026.">
 <meta property="og:url" content="https://chyfarhanjamil.github.io/wc2026-fixtures/">
-
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FIFA World Cup 2026 – Team Fixtures</title>
@@ -21,7 +20,6 @@
     --card-border: #1e2d45;
     --text: #e8eaf0;
     --muted: #7a8499;
-    --win: #22c55e;
     --accent: #3b82f6;
   }
 
@@ -57,7 +55,7 @@
     font-size: clamp(72px, 12vw, 130px);
     line-height: 0.85;
     color: transparent;
-    -webkit-text-stroke: 1px rgba(201,168,76,0.25);
+    -webkit-text-stroke: 1px rgba(201,168,76,0.18);
     letter-spacing: 4px;
     position: absolute;
     top: 20px;
@@ -88,13 +86,14 @@
     z-index: 1;
   }
 
+  /* ── Controls ── */
   .controls {
     max-width: 1200px;
-    margin: 0 auto 32px;
+    margin: 0 auto 28px;
     padding: 0 20px;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 14px;
   }
 
   .search-wrap {
@@ -124,32 +123,251 @@
     color: var(--muted);
   }
 
-  .group-tabs {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
+  /* ── Mode selector (3 big tabs) ── */
+  .mode-bar {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
   }
 
-  .group-tab {
-    padding: 8px 16px;
+  .mode-btn {
+    padding: 12px 10px;
+    border-radius: 12px;
+    border: 1px solid var(--card-border);
+    background: var(--card-bg);
+    color: var(--muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+    transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .mode-btn .icon { font-size: 20px; }
+
+  .mode-btn:hover { border-color: rgba(201,168,76,0.4); color: var(--text); }
+
+  .mode-btn.active {
+    background: linear-gradient(135deg, rgba(201,168,76,0.2), rgba(201,168,76,0.05));
+    border-color: var(--gold);
+    color: var(--gold);
+  }
+
+  /* ── Sub-filter panel ── */
+  .filter-panel {
+    display: none;
+    flex-wrap: wrap;
+    gap: 8px;
+    animation: fadeIn 0.2s ease;
+  }
+
+  .filter-panel.visible { display: flex; }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+
+  .filter-chip {
+    padding: 7px 14px;
     border-radius: 8px;
     border: 1px solid var(--card-border);
     background: transparent;
     color: var(--muted);
     font-family: 'DM Sans', sans-serif;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 500;
     cursor: pointer;
-    letter-spacing: 1px;
-    transition: all 0.2s;
+    letter-spacing: 0.5px;
+    transition: all 0.18s;
+    white-space: nowrap;
   }
 
-  .group-tab:hover, .group-tab.active {
+  .filter-chip:hover, .filter-chip.active {
     background: var(--gold);
     border-color: var(--gold);
     color: #000;
+    font-weight: 600;
   }
 
+  /* ── Calendar ── */
+  .calendar-wrap {
+    display: none;
+  }
+
+  .calendar-wrap.visible { display: block; }
+
+  .calendar {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  .cal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--card-border);
+  }
+
+  .cal-header h3 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 2px;
+    color: var(--gold);
+  }
+
+  .cal-nav {
+    background: none;
+    border: 1px solid var(--card-border);
+    color: var(--muted);
+    border-radius: 8px;
+    width: 32px;
+    height: 32px;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+
+  .cal-nav:hover { border-color: var(--gold); color: var(--gold); }
+
+  .cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 1px;
+    background: var(--card-border);
+  }
+
+  .cal-day-name {
+    background: var(--card-bg);
+    text-align: center;
+    padding: 10px 4px;
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .cal-day {
+    background: var(--card-bg);
+    text-align: center;
+    padding: 12px 4px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--muted);
+    cursor: default;
+    position: relative;
+    min-height: 52px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+  }
+
+  .cal-day.has-match {
+    color: var(--text);
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .cal-day.has-match:hover { background: rgba(201,168,76,0.08); }
+
+  .cal-day.selected {
+    background: rgba(201,168,76,0.15) !important;
+    color: var(--gold);
+  }
+
+  .cal-day.selected .day-num { color: var(--gold); font-weight: 700; }
+
+  .match-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--gold);
+    opacity: 0.8;
+  }
+
+  .match-count-label {
+    font-size: 9px;
+    color: var(--gold);
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+
+  .cal-day.empty { background: rgba(0,0,0,0.2); }
+
+  /* ── Calendar day results ── */
+  .day-results {
+    display: none;
+    margin-top: 14px;
+  }
+
+  .day-results.visible { display: block; }
+
+  .day-results-header {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 2px;
+    color: var(--gold);
+    margin-bottom: 12px;
+    padding: 0 4px;
+  }
+
+  .day-match-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 14px 18px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    transition: border-color 0.2s;
+  }
+
+  .day-match-card:hover { border-color: rgba(201,168,76,0.35); }
+
+  .day-match-teams {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    flex: 1;
+  }
+
+  .day-match-teams .hl { color: var(--gold-light); }
+
+  .day-match-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 3px;
+    flex-shrink: 0;
+  }
+
+  .day-match-time {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+
+  .day-match-group {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  /* ── Teams grid ── */
   .teams-grid {
     max-width: 1200px;
     margin: 0 auto;
@@ -218,9 +436,7 @@
     font-weight: 500;
   }
 
-  .match-list {
-    padding: 12px 0;
-  }
+  .match-list { padding: 12px 0; }
 
   .match-row {
     padding: 10px 20px;
@@ -235,29 +451,12 @@
   .match-row:last-child { border-bottom: none; }
   .match-row:hover { background: rgba(255,255,255,0.03); }
 
-  .match-date {
-    font-size: 11px;
-    color: var(--muted);
-    font-weight: 500;
-  }
+  .match-date { font-size: 11px; color: var(--muted); font-weight: 500; }
 
-  .match-vs {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text);
-    text-align: center;
-  }
+  .match-vs { font-size: 13px; font-weight: 600; color: var(--text); text-align: center; }
+  .match-vs .highlight { color: var(--gold-light); }
 
-  .match-vs .highlight {
-    color: var(--gold-light);
-  }
-
-  .match-time {
-    font-size: 11px;
-    color: var(--accent);
-    text-align: right;
-    font-weight: 500;
-  }
+  .match-time { font-size: 11px; color: var(--accent); text-align: right; font-weight: 500; }
 
   .no-results {
     grid-column: 1/-1;
@@ -280,6 +479,16 @@
     letter-spacing: 1px;
     margin-left: 8px;
   }
+
+  /* time slots */
+  .time-slot-label {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+    padding: 0 2px;
+    width: 100%;
+  }
 </style>
 </head>
 <body>
@@ -287,181 +496,262 @@
 <header>
   <div class="year-badge">2026</div>
   <h1>⚽ FIFA WORLD CUP 2026</h1>
-  <p>Group Stage Fixtures · All Teams</p>
+  <p>Group Stage Fixtures · All Teams · Bangladesh Time</p>
 </header>
 
 <div class="controls">
+
+  <!-- Search -->
   <div class="search-wrap">
     <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
       <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
     </svg>
-    <input type="text" id="search" placeholder="Search team (e.g. Brazil, France, USA…)" oninput="filterCards()">
+    <input type="text" id="search" placeholder="Search team (e.g. Brazil, France, USA…)" oninput="onSearch()">
   </div>
-  <div class="group-tabs" id="groupTabs"></div>
+
+  <!-- 3 mode buttons -->
+  <div class="mode-bar">
+    <button class="mode-btn active" onclick="setMode('teams')" id="modeTeams">
+      <span class="icon">🌍</span> By Team
+    </button>
+    <button class="mode-btn" onclick="setMode('group')" id="modeGroup">
+      <span class="icon">🔠</span> By Group
+    </button>
+    <button class="mode-btn" onclick="setMode('time')" id="modeTime">
+      <span class="icon">🕐</span> By Time
+    </button>
+  </div>
+
+  <!-- Group filter chips (shown when mode = group) -->
+  <div class="filter-panel" id="groupPanel">
+    <button class="filter-chip active" onclick="setGroup(null, this)">All Groups</button>
+  </div>
+
+  <!-- Time filter chips (shown when mode = time) -->
+  <div class="filter-panel" id="timePanel">
+    <button class="filter-chip active" onclick="setTimeSlot(null, this)">All Times</button>
+  </div>
+
+  <!-- Calendar (shown when mode = calendar... actually 4th mode) -->
 </div>
+
+<!-- Calendar mode section -->
+<div id="calendarSection" style="max-width:1200px;margin:0 auto 28px;padding:0 20px;display:none;">
+  <div class="calendar">
+    <div class="cal-header">
+      <button class="cal-nav" onclick="shiftMonth(-1)">‹</button>
+      <h3 id="calTitle">JUNE 2026</h3>
+      <button class="cal-nav" onclick="shiftMonth(1)">›</button>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+  </div>
+  <div class="day-results" id="dayResults">
+    <div class="day-results-header" id="dayResultsHeader"></div>
+    <div id="dayMatchList"></div>
+  </div>
+</div>
+
+<!-- Add calendar as 4th mode button dynamically -->
+<script>
+// inject 4th mode btn into mode-bar
+document.querySelector('.mode-bar').innerHTML += `
+  <button class="mode-btn" onclick="setMode('calendar')" id="modeCalendar">
+    <span class="icon">📅</span> Calendar
+  </button>
+`;
+// fix grid
+document.querySelector('.mode-bar').style.gridTemplateColumns = '1fr 1fr 1fr 1fr';
+</script>
 
 <div class="teams-grid" id="grid"></div>
 
 <script>
 const FLAGS = {
-  'Mexico': '🇲🇽', 'South Africa': '🇿🇦', 'Korea Republic': '🇰🇷', 'Czechia': '🇨🇿',
-  'Canada': '🇨🇦', 'Bosnia & Herzegovina': '🇧🇦', 'USA': '🇺🇸', 'Paraguay': '🇵🇾',
-  'Qatar': '🇶🇦', 'Switzerland': '🇨🇭', 'Brazil': '🇧🇷', 'Morocco': '🇲🇦',
-  'Haiti': '🇭🇹', 'Scotland': '🏴󠁧󠁢󠁳󠁣󠁴󠁿', 'Australia': '🇦🇺', 'Türkiye': '🇹🇷',
-  'Germany': '🇩🇪', 'Curaçao': '🇨🇼', 'Netherlands': '🇳🇱', 'Japan': '🇯🇵',
-  'Ivory Coast': '🇨🇮', 'Ecuador': '🇪🇨', 'Sweden': '🇸🇪', 'Tunisia': '🇹🇳',
-  'Spain': '🇪🇸', 'Cabo Verde': '🇨🇻', 'Belgium': '🇧🇪', 'Egypt': '🇪🇬',
-  'Saudi Arabia': '🇸🇦', 'Uruguay': '🇺🇾', 'Iran': '🇮🇷', 'New Zealand': '🇳🇿',
-  'France': '🇫🇷', 'Senegal': '🇸🇳', 'Iraq': '🇮🇶', 'Norway': '🇳🇴',
-  'Argentina': '🇦🇷', 'Algeria': '🇩🇿', 'Austria': '🇦🇹', 'Jordan': '🇯🇴',
-  'Portugal': '🇵🇹', 'Congo': '🇨🇬', 'England': '🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'Croatia': '🇭🇷',
-  'Ghana': '🇬🇭', 'Panama': '🇵🇦', 'Uzbekistan': '🇺🇿', 'Colombia': '🇨🇴',
-  'England': '🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'Ghana': '🇬🇭'
+  'Mexico':'🇲🇽','South Africa':'🇿🇦','Korea Republic':'🇰🇷','Czechia':'🇨🇿',
+  'Canada':'🇨🇦','Bosnia & Herzegovina':'🇧🇦','USA':'🇺🇸','Paraguay':'🇵🇾',
+  'Qatar':'🇶🇦','Switzerland':'🇨🇭','Brazil':'🇧🇷','Morocco':'🇲🇦',
+  'Haiti':'🇭🇹','Scotland':'🏴󠁧󠁢󠁳󠁣󠁴󠁿','Australia':'🇦🇺','Türkiye':'🇹🇷',
+  'Germany':'🇩🇪','Curaçao':'🇨🇼','Netherlands':'🇳🇱','Japan':'🇯🇵',
+  'Ivory Coast':'🇨🇮','Ecuador':'🇪🇨','Sweden':'🇸🇪','Tunisia':'🇹🇳',
+  'Spain':'🇪🇸','Cabo Verde':'🇨🇻','Belgium':'🇧🇪','Egypt':'🇪🇬',
+  'Saudi Arabia':'🇸🇦','Uruguay':'🇺🇾','Iran':'🇮🇷','New Zealand':'🇳🇿',
+  'France':'🇫🇷','Senegal':'🇸🇳','Iraq':'🇮🇶','Norway':'🇳🇴',
+  'Argentina':'🇦🇷','Algeria':'🇩🇿','Austria':'🇦🇹','Jordan':'🇯🇴',
+  'Portugal':'🇵🇹','Congo':'🇨🇬','England':'🏴󠁧󠁢󠁥󠁮󠁧󠁿','Croatia':'🇭🇷',
+  'Ghana':'🇬🇭','Panama':'🇵🇦','Uzbekistan':'🇺🇿','Colombia':'🇨🇴'
 };
 
 const RAW = [
-  // Group A
-  {d:'Jun 12',m:'Mexico vs South Africa',g:'A',t:'01:00 AM'},
-  {d:'Jun 12',m:'Korea Republic vs Czechia',g:'A',t:'08:00 AM'},
-  {d:'Jun 18',m:'Czechia vs South Africa',g:'A',t:'10:00 PM'},
-  {d:'Jun 19',m:'Mexico vs Korea Republic',g:'A',t:'07:00 AM'},
-  {d:'Jun 25',m:'Czechia vs Mexico',g:'A',t:'07:00 AM'},
-  {d:'Jun 25',m:'South Africa vs Korea Republic',g:'A',t:'07:00 AM'},
-  // Group B
-  {d:'Jun 13',m:'Canada vs Bosnia & Herzegovina',g:'B',t:'01:00 AM'},
-  {d:'Jun 14',m:'Qatar vs Switzerland',g:'B',t:'01:00 AM'},
-  {d:'Jun 19',m:'Switzerland vs Bosnia & Herzegovina',g:'B',t:'01:00 AM'},
-  {d:'Jun 19',m:'Canada vs Qatar',g:'B',t:'04:00 AM'},
-  {d:'Jun 25',m:'Switzerland vs Canada',g:'B',t:'01:00 AM'},
-  {d:'Jun 25',m:'Bosnia & Herzegovina vs Qatar',g:'B',t:'01:00 AM'},
-  // Group C
-  {d:'Jun 14',m:'Brazil vs Morocco',g:'C',t:'04:00 AM'},
-  {d:'Jun 14',m:'Haiti vs Scotland',g:'C',t:'07:00 AM'},
-  {d:'Jun 20',m:'Scotland vs Morocco',g:'C',t:'04:00 AM'},
-  {d:'Jun 20',m:'Brazil vs Haiti',g:'C',t:'06:30 AM'},
-  {d:'Jun 25',m:'Scotland vs Brazil',g:'C',t:'04:00 AM'},
-  {d:'Jun 25',m:'Morocco vs Haiti',g:'C',t:'04:00 AM'},
-  // Group D
-  {d:'Jun 13',m:'USA vs Paraguay',g:'D',t:'07:00 AM'},
-  {d:'Jun 14',m:'Australia vs Türkiye',g:'D',t:'10:00 AM'},
-  {d:'Jun 20',m:'USA vs Australia',g:'D',t:'01:00 AM'},
-  {d:'Jun 20',m:'Türkiye vs Paraguay',g:'D',t:'09:00 AM'},
-  {d:'Jun 26',m:'Türkiye vs USA',g:'D',t:'08:00 AM'},
-  {d:'Jun 26',m:'Paraguay vs Australia',g:'D',t:'08:00 AM'},
-  // Group E
-  {d:'Jun 14',m:'Germany vs Curaçao',g:'E',t:'11:00 PM'},
-  {d:'Jun 15',m:'Ivory Coast vs Ecuador',g:'E',t:'05:00 AM'},
-  {d:'Jun 21',m:'Germany vs Ivory Coast',g:'E',t:'02:00 AM'},
-  {d:'Jun 21',m:'Ecuador vs Curaçao',g:'E',t:'06:00 AM'},
-  {d:'Jun 26',m:'Curaçao vs Ivory Coast',g:'E',t:'02:00 AM'},
-  {d:'Jun 26',m:'Ecuador vs Germany',g:'E',t:'02:00 AM'},
-  // Group F
-  {d:'Jun 15',m:'Netherlands vs Japan',g:'F',t:'02:00 AM'},
-  {d:'Jun 15',m:'Sweden vs Tunisia',g:'F',t:'08:00 AM'},
-  {d:'Jun 20',m:'Netherlands vs Sweden',g:'F',t:'11:00 PM'},
-  {d:'Jun 21',m:'Tunisia vs Japan',g:'F',t:'10:00 AM'},
-  {d:'Jun 26',m:'Japan vs Sweden',g:'F',t:'05:00 AM'},
-  {d:'Jun 26',m:'Tunisia vs Netherlands',g:'F',t:'05:00 AM'},
-  // Group G
-  {d:'Jun 16',m:'Belgium vs Egypt',g:'G',t:'01:00 AM'},
-  {d:'Jun 16',m:'Iran vs New Zealand',g:'G',t:'07:00 AM'},
-  {d:'Jun 22',m:'Belgium vs Iran',g:'G',t:'01:00 AM'},
-  {d:'Jun 22',m:'New Zealand vs Egypt',g:'G',t:'07:00 AM'},
-  {d:'Jun 27',m:'Egypt vs Iran',g:'G',t:'09:00 AM'},
-  {d:'Jun 27',m:'New Zealand vs Belgium',g:'G',t:'09:00 AM'},
-  // Group H
-  {d:'Jun 15',m:'Spain vs Cabo Verde',g:'H',t:'10:00 PM'},
-  {d:'Jun 16',m:'Saudi Arabia vs Uruguay',g:'H',t:'04:00 AM'},
-  {d:'Jun 21',m:'Spain vs Saudi Arabia',g:'H',t:'10:00 PM'},
-  {d:'Jun 22',m:'Uruguay vs Cabo Verde',g:'H',t:'04:00 AM'},
-  {d:'Jun 27',m:'Cabo Verde vs Saudi Arabia',g:'H',t:'06:00 AM'},
-  {d:'Jun 27',m:'Uruguay vs Spain',g:'H',t:'06:00 AM'},
-  // Group I
-  {d:'Jun 17',m:'France vs Senegal',g:'I',t:'01:00 AM'},
-  {d:'Jun 17',m:'Iraq vs Norway',g:'I',t:'04:00 AM'},
-  {d:'Jun 23',m:'France vs Iraq',g:'I',t:'03:00 AM'},
-  {d:'Jun 23',m:'Norway vs Senegal',g:'I',t:'06:00 AM'},
-  {d:'Jun 27',m:'Norway vs France',g:'I',t:'01:00 AM'},
-  {d:'Jun 27',m:'Senegal vs Iraq',g:'I',t:'01:00 AM'},
-  // Group J
-  {d:'Jun 17',m:'Argentina vs Algeria',g:'J',t:'07:00 AM'},
-  {d:'Jun 17',m:'Austria vs Jordan',g:'J',t:'10:00 AM'},
-  {d:'Jun 22',m:'Argentina vs Austria',g:'J',t:'11:00 PM'},
-  {d:'Jun 23',m:'Jordan vs Algeria',g:'J',t:'09:00 AM'},
-  {d:'Jun 28',m:'Algeria vs Austria',g:'J',t:'08:00 AM'},
-  {d:'Jun 28',m:'Jordan vs Argentina',g:'J',t:'08:00 AM'},
-  // Group K
-  {d:'Jun 17',m:'Portugal vs Congo',g:'K',t:'11:00 PM'},
-  {d:'Jun 18',m:'Uzbekistan vs Colombia',g:'K',t:'08:00 AM'},
-  {d:'Jun 23',m:'Portugal vs Uzbekistan',g:'K',t:'11:00 PM'},
-  {d:'Jun 24',m:'Colombia vs Congo',g:'K',t:'08:00 AM'},
-  {d:'Jun 28',m:'Colombia vs Portugal',g:'K',t:'05:30 AM'},
-  {d:'Jun 28',m:'Congo vs Uzbekistan',g:'K',t:'05:30 AM'},
-  // Group L
-  {d:'Jun 18',m:'England vs Croatia',g:'L',t:'02:00 AM'},
-  {d:'Jun 18',m:'Ghana vs Panama',g:'L',t:'05:00 AM'},
-  {d:'Jun 24',m:'England vs Ghana',g:'L',t:'02:00 AM'},
-  {d:'Jun 24',m:'Panama vs Croatia',g:'L',t:'05:00 AM'},
-  {d:'Jun 28',m:'Panama vs England',g:'L',t:'03:00 AM'},
-  {d:'Jun 28',m:'Croatia vs Ghana',g:'L',t:'03:00 AM'},
+  {d:'Jun 12',day:12,m:'Mexico vs South Africa',g:'A',t:'01:00 AM'},
+  {d:'Jun 12',day:12,m:'Korea Republic vs Czechia',g:'A',t:'08:00 AM'},
+  {d:'Jun 13',day:13,m:'Canada vs Bosnia & Herzegovina',g:'B',t:'01:00 AM'},
+  {d:'Jun 13',day:13,m:'USA vs Paraguay',g:'D',t:'07:00 AM'},
+  {d:'Jun 14',day:14,m:'Qatar vs Switzerland',g:'B',t:'01:00 AM'},
+  {d:'Jun 14',day:14,m:'Brazil vs Morocco',g:'C',t:'04:00 AM'},
+  {d:'Jun 14',day:14,m:'Haiti vs Scotland',g:'C',t:'07:00 AM'},
+  {d:'Jun 14',day:14,m:'Australia vs Türkiye',g:'D',t:'10:00 AM'},
+  {d:'Jun 14',day:14,m:'Germany vs Curaçao',g:'E',t:'11:00 PM'},
+  {d:'Jun 15',day:15,m:'Netherlands vs Japan',g:'F',t:'02:00 AM'},
+  {d:'Jun 15',day:15,m:'Ivory Coast vs Ecuador',g:'E',t:'05:00 AM'},
+  {d:'Jun 15',day:15,m:'Sweden vs Tunisia',g:'F',t:'08:00 AM'},
+  {d:'Jun 15',day:15,m:'Spain vs Cabo Verde',g:'H',t:'10:00 PM'},
+  {d:'Jun 16',day:16,m:'Belgium vs Egypt',g:'G',t:'01:00 AM'},
+  {d:'Jun 16',day:16,m:'Saudi Arabia vs Uruguay',g:'H',t:'04:00 AM'},
+  {d:'Jun 16',day:16,m:'Iran vs New Zealand',g:'G',t:'07:00 AM'},
+  {d:'Jun 17',day:17,m:'France vs Senegal',g:'I',t:'01:00 AM'},
+  {d:'Jun 17',day:17,m:'Iraq vs Norway',g:'I',t:'04:00 AM'},
+  {d:'Jun 17',day:17,m:'Argentina vs Algeria',g:'J',t:'07:00 AM'},
+  {d:'Jun 17',day:17,m:'Austria vs Jordan',g:'J',t:'10:00 AM'},
+  {d:'Jun 17',day:17,m:'Portugal vs Congo',g:'K',t:'11:00 PM'},
+  {d:'Jun 18',day:18,m:'England vs Croatia',g:'L',t:'02:00 AM'},
+  {d:'Jun 18',day:18,m:'Ghana vs Panama',g:'L',t:'05:00 AM'},
+  {d:'Jun 18',day:18,m:'Uzbekistan vs Colombia',g:'K',t:'08:00 AM'},
+  {d:'Jun 18',day:18,m:'Czechia vs South Africa',g:'A',t:'10:00 PM'},
+  {d:'Jun 19',day:19,m:'Switzerland vs Bosnia & Herzegovina',g:'B',t:'01:00 AM'},
+  {d:'Jun 19',day:19,m:'Canada vs Qatar',g:'B',t:'04:00 AM'},
+  {d:'Jun 19',day:19,m:'Mexico vs Korea Republic',g:'A',t:'07:00 AM'},
+  {d:'Jun 20',day:20,m:'USA vs Australia',g:'D',t:'01:00 AM'},
+  {d:'Jun 20',day:20,m:'Scotland vs Morocco',g:'C',t:'04:00 AM'},
+  {d:'Jun 20',day:20,m:'Brazil vs Haiti',g:'C',t:'06:30 AM'},
+  {d:'Jun 20',day:20,m:'Türkiye vs Paraguay',g:'D',t:'09:00 AM'},
+  {d:'Jun 20',day:20,m:'Netherlands vs Sweden',g:'F',t:'11:00 PM'},
+  {d:'Jun 21',day:21,m:'Germany vs Ivory Coast',g:'E',t:'02:00 AM'},
+  {d:'Jun 21',day:21,m:'Ecuador vs Curaçao',g:'E',t:'06:00 AM'},
+  {d:'Jun 21',day:21,m:'Tunisia vs Japan',g:'F',t:'10:00 AM'},
+  {d:'Jun 21',day:21,m:'Spain vs Saudi Arabia',g:'H',t:'10:00 PM'},
+  {d:'Jun 22',day:22,m:'Belgium vs Iran',g:'G',t:'01:00 AM'},
+  {d:'Jun 22',day:22,m:'Uruguay vs Cabo Verde',g:'H',t:'04:00 AM'},
+  {d:'Jun 22',day:22,m:'New Zealand vs Egypt',g:'G',t:'07:00 AM'},
+  {d:'Jun 22',day:22,m:'Argentina vs Austria',g:'J',t:'11:00 PM'},
+  {d:'Jun 23',day:23,m:'France vs Iraq',g:'I',t:'03:00 AM'},
+  {d:'Jun 23',day:23,m:'Norway vs Senegal',g:'I',t:'06:00 AM'},
+  {d:'Jun 23',day:23,m:'Jordan vs Algeria',g:'J',t:'09:00 AM'},
+  {d:'Jun 23',day:23,m:'Portugal vs Uzbekistan',g:'K',t:'11:00 PM'},
+  {d:'Jun 24',day:24,m:'England vs Ghana',g:'L',t:'02:00 AM'},
+  {d:'Jun 24',day:24,m:'Panama vs Croatia',g:'L',t:'05:00 AM'},
+  {d:'Jun 24',day:24,m:'Colombia vs Congo',g:'K',t:'08:00 AM'},
+  {d:'Jun 25',day:25,m:'Switzerland vs Canada',g:'B',t:'01:00 AM'},
+  {d:'Jun 25',day:25,m:'Bosnia & Herzegovina vs Qatar',g:'B',t:'01:00 AM'},
+  {d:'Jun 25',day:25,m:'Scotland vs Brazil',g:'C',t:'04:00 AM'},
+  {d:'Jun 25',day:25,m:'Morocco vs Haiti',g:'C',t:'04:00 AM'},
+  {d:'Jun 25',day:25,m:'Czechia vs Mexico',g:'A',t:'07:00 AM'},
+  {d:'Jun 25',day:25,m:'South Africa vs Korea Republic',g:'A',t:'07:00 AM'},
+  {d:'Jun 26',day:26,m:'Curaçao vs Ivory Coast',g:'E',t:'02:00 AM'},
+  {d:'Jun 26',day:26,m:'Ecuador vs Germany',g:'E',t:'02:00 AM'},
+  {d:'Jun 26',day:26,m:'Japan vs Sweden',g:'F',t:'05:00 AM'},
+  {d:'Jun 26',day:26,m:'Tunisia vs Netherlands',g:'F',t:'05:00 AM'},
+  {d:'Jun 26',day:26,m:'Türkiye vs USA',g:'D',t:'08:00 AM'},
+  {d:'Jun 26',day:26,m:'Paraguay vs Australia',g:'D',t:'08:00 AM'},
+  {d:'Jun 27',day:27,m:'Norway vs France',g:'I',t:'01:00 AM'},
+  {d:'Jun 27',day:27,m:'Senegal vs Iraq',g:'I',t:'01:00 AM'},
+  {d:'Jun 27',day:27,m:'Cabo Verde vs Saudi Arabia',g:'H',t:'06:00 AM'},
+  {d:'Jun 27',day:27,m:'Uruguay vs Spain',g:'H',t:'06:00 AM'},
+  {d:'Jun 27',day:27,m:'Egypt vs Iran',g:'G',t:'09:00 AM'},
+  {d:'Jun 27',day:27,m:'New Zealand vs Belgium',g:'G',t:'09:00 AM'},
+  {d:'Jun 28',day:28,m:'Panama vs England',g:'L',t:'03:00 AM'},
+  {d:'Jun 28',day:28,m:'Croatia vs Ghana',g:'L',t:'03:00 AM'},
+  {d:'Jun 28',day:28,m:'Colombia vs Portugal',g:'K',t:'05:30 AM'},
+  {d:'Jun 28',day:28,m:'Congo vs Uzbekistan',g:'K',t:'05:30 AM'},
+  {d:'Jun 28',day:28,m:'Algeria vs Austria',g:'J',t:'08:00 AM'},
+  {d:'Jun 28',day:28,m:'Jordan vs Argentina',g:'J',t:'08:00 AM'},
 ];
 
-// Build team → matches map
+// Time slot categorisation
+function getTimeSlot(t) {
+  const h = parseInt(t.split(':')[0]);
+  const isPM = t.includes('PM');
+  let hour24 = isPM && h !== 12 ? h + 12 : (!isPM && h === 12 ? 0 : h);
+  if (hour24 >= 0 && hour24 < 6) return 'Early Morning (12AM–6AM)';
+  if (hour24 >= 6 && hour24 < 12) return 'Morning (6AM–12PM)';
+  if (hour24 >= 12 && hour24 < 18) return 'Afternoon (12PM–6PM)';
+  return 'Evening/Night (6PM–12AM)';
+}
+
+// Build team map
 const teamMap = {};
-RAW.forEach(({d,m,g,t}) => {
+RAW.forEach(({d,day,m,g,t}) => {
   const [t1, t2] = m.split(' vs ');
   [t1.trim(), t2.trim()].forEach(team => {
     if (!teamMap[team]) teamMap[team] = {group: g, matches: []};
-    teamMap[team].matches.push({d, opponent: team === t1.trim() ? t2.trim() : t1.trim(), self: team, g, t, raw: m});
+    teamMap[team].matches.push({d, day, opponent: team===t1.trim()?t2.trim():t1.trim(), self:team, g, t, raw:m, slot: getTimeSlot(t)});
   });
 });
 
 const teams = Object.keys(teamMap).sort();
-const groups = [...new Set(Object.values(teamMap).map(v => v.group))].sort();
+const groups = [...new Set(RAW.map(r=>r.g))].sort();
+const timeSlots = ['Early Morning (12AM–6AM)','Morning (6AM–12PM)','Afternoon (12PM–6PM)','Evening/Night (6PM–12AM)'];
 
-// Build group tabs
-const tabs = document.getElementById('groupTabs');
-const allBtn = document.createElement('button');
-allBtn.className = 'group-tab active';
-allBtn.textContent = 'All Groups';
-allBtn.onclick = () => { setGroup(null); };
-tabs.appendChild(allBtn);
-
+// Build group chips
+const groupPanel = document.getElementById('groupPanel');
 groups.forEach(g => {
   const btn = document.createElement('button');
-  btn.className = 'group-tab';
+  btn.className = 'filter-chip';
   btn.textContent = `Group ${g}`;
-  btn.onclick = () => setGroup(g);
-  tabs.appendChild(btn);
+  btn.onclick = () => setGroup(g, btn);
+  groupPanel.appendChild(btn);
 });
 
+// Build time chips
+const timePanel = document.getElementById('timePanel');
+timeSlots.forEach(slot => {
+  const btn = document.createElement('button');
+  btn.className = 'filter-chip';
+  btn.textContent = slot;
+  btn.onclick = () => setTimeSlot(slot, btn);
+  timePanel.appendChild(btn);
+});
+
+// State
+let currentMode = 'teams';
 let activeGroup = null;
+let activeTimeSlot = null;
+let calMonth = 6; // June
+let calYear = 2026;
+let selectedDay = null;
 
-function setGroup(g) {
+function setMode(mode) {
+  currentMode = mode;
+  ['teams','group','time','calendar'].forEach(m => {
+    document.getElementById('mode'+m.charAt(0).toUpperCase()+m.slice(1)).classList.toggle('active', m===mode);
+  });
+  document.getElementById('groupPanel').classList.toggle('visible', mode==='group');
+  document.getElementById('timePanel').classList.toggle('visible', mode==='time');
+  document.getElementById('calendarSection').style.display = mode==='calendar'?'block':'none';
+  document.getElementById('grid').style.display = mode==='calendar'?'none':'grid';
+
+  if (mode==='calendar') {
+    renderCalendar();
+    document.getElementById('dayResults').classList.remove('visible');
+  }
+
+  activeGroup = null;
+  activeTimeSlot = null;
+  // reset chips
+  document.querySelectorAll('#groupPanel .filter-chip').forEach((c,i)=>c.classList.toggle('active',i===0));
+  document.querySelectorAll('#timePanel .filter-chip').forEach((c,i)=>c.classList.toggle('active',i===0));
+
+  renderCards();
+}
+
+function setGroup(g, btn) {
   activeGroup = g;
-  document.querySelectorAll('.group-tab').forEach((b,i) => {
-    b.classList.toggle('active', i === 0 ? g === null : b.textContent === `Group ${g}`);
-  });
-  filterCards();
+  document.querySelectorAll('#groupPanel .filter-chip').forEach(c=>c.classList.remove('active'));
+  btn.classList.add('active');
+  renderCards();
 }
 
-function filterCards() {
-  const q = document.getElementById('search').value.toLowerCase();
-  const cards = document.querySelectorAll('.team-card');
-  let visible = 0;
-  cards.forEach(card => {
-    const name = card.dataset.team.toLowerCase();
-    const grp = card.dataset.group;
-    const matchSearch = !q || name.includes(q);
-    const matchGroup = !activeGroup || grp === activeGroup;
-    const show = matchSearch && matchGroup;
-    card.classList.toggle('hidden', !show);
-    if (show) visible++;
-  });
-  document.getElementById('noResults').classList.toggle('hidden', visible > 0);
+function setTimeSlot(slot, btn) {
+  activeTimeSlot = slot;
+  document.querySelectorAll('#timePanel .filter-chip').forEach(c=>c.classList.remove('active'));
+  btn.classList.add('active');
+  renderCards();
 }
 
-// Render cards
+function onSearch() {
+  renderCards();
+}
+
+// Build all team cards once
 const grid = document.getElementById('grid');
 
 teams.forEach(team => {
@@ -472,16 +762,17 @@ teams.forEach(team => {
   card.className = 'team-card';
   card.dataset.team = team;
   card.dataset.group = group;
+  // store all slots as data attr
+  card.dataset.slots = JSON.stringify([...new Set(matches.map(m=>m.slot))]);
 
-  const rows = matches.map(({d, opponent, t, raw}) => {
-    const teams2 = raw.split(' vs ');
-    const label = `<span class="highlight">${teams2[0].trim()}</span> vs ${teams2[1].trim()}`;
-    return `
-      <div class="match-row">
-        <div class="match-date">${d}</div>
-        <div class="match-vs">${label}</div>
-        <div class="match-time">${t}</div>
-      </div>`;
+  const rows = matches.map(({d,t,raw,slot}) => {
+    const parts = raw.split(' vs ');
+    const label = `<span class="highlight">${parts[0].trim()}</span> vs ${parts[1].trim()}`;
+    return `<div class="match-row" data-slot="${slot}">
+      <div class="match-date">${d}</div>
+      <div class="match-vs">${label}</div>
+      <div class="match-time">${t}</div>
+    </div>`;
   }).join('');
 
   card.innerHTML = `
@@ -492,18 +783,140 @@ teams.forEach(team => {
         <div class="group-label">Group ${group} <span class="count-badge">${matches.length} matches</span></div>
       </div>
     </div>
-    <div class="match-list">${rows}</div>
-  `;
+    <div class="match-list">${rows}</div>`;
 
   grid.appendChild(card);
 });
 
-// No results placeholder
 const noRes = document.createElement('div');
 noRes.id = 'noResults';
 noRes.className = 'no-results hidden';
-noRes.textContent = 'No teams match your search.';
+noRes.textContent = 'No teams match your filters.';
 grid.appendChild(noRes);
+
+function renderCards() {
+  const q = document.getElementById('search').value.toLowerCase();
+  const cards = document.querySelectorAll('.team-card');
+  let visible = 0;
+
+  cards.forEach(card => {
+    const name = card.dataset.team.toLowerCase();
+    const grp = card.dataset.group;
+    const slots = JSON.parse(card.dataset.slots);
+
+    const matchSearch = !q || name.includes(q);
+    const matchGroup = !activeGroup || grp === activeGroup;
+    const matchTime = !activeTimeSlot || slots.includes(activeTimeSlot);
+
+    const show = matchSearch && matchGroup && matchTime;
+    card.classList.toggle('hidden', !show);
+    if (show) visible++;
+
+    // If time filter active, hide individual rows that don't match
+    if (activeTimeSlot) {
+      card.querySelectorAll('.match-row').forEach(row => {
+        row.style.display = row.dataset.slot === activeTimeSlot ? '' : 'none';
+      });
+    } else {
+      card.querySelectorAll('.match-row').forEach(row => row.style.display = '');
+    }
+  });
+
+  document.getElementById('noResults').classList.toggle('hidden', visible > 0);
+}
+
+// ── Calendar ──
+const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+// Build day → matches map
+const dayMap = {};
+RAW.forEach(r => {
+  const key = `${r.day}`;
+  if (!dayMap[key]) dayMap[key] = [];
+  dayMap[key].push(r);
+});
+
+function shiftMonth(delta) {
+  calMonth += delta;
+  if (calMonth > 12) { calMonth = 1; calYear++; }
+  if (calMonth < 1) { calMonth = 12; calYear--; }
+  selectedDay = null;
+  document.getElementById('dayResults').classList.remove('visible');
+  renderCalendar();
+}
+
+function renderCalendar() {
+  document.getElementById('calTitle').textContent = `${MONTHS[calMonth-1].toUpperCase()} ${calYear}`;
+  const grid = document.getElementById('calGrid');
+  grid.innerHTML = '';
+
+  // day name headers
+  DAYS.forEach(d => {
+    const el = document.createElement('div');
+    el.className = 'cal-day-name';
+    el.textContent = d;
+    grid.appendChild(el);
+  });
+
+  const firstDay = new Date(calYear, calMonth-1, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth, 0).getDate();
+
+  // empty cells
+  for (let i=0; i<firstDay; i++) {
+    const el = document.createElement('div');
+    el.className = 'cal-day empty';
+    grid.appendChild(el);
+  }
+
+  // day cells — only June 2026 has matches (days 12–28)
+  for (let d=1; d<=daysInMonth; d++) {
+    const el = document.createElement('div');
+    el.className = 'cal-day';
+
+    const key = `${d}`;
+    const matches = (calMonth===6 && calYear===2026) ? (dayMap[key]||[]) : [];
+
+    el.innerHTML = `<span class="day-num">${d}</span>`;
+
+    if (matches.length > 0) {
+      el.classList.add('has-match');
+      el.innerHTML += `<div class="match-dot"></div><div class="match-count-label">${matches.length} matches</div>`;
+      el.onclick = () => selectDay(d, matches, el);
+    }
+
+    if (selectedDay === d) el.classList.add('selected');
+    grid.appendChild(el);
+  }
+}
+
+function selectDay(d, matches, el) {
+  selectedDay = d;
+  // update selected styling
+  document.querySelectorAll('.cal-day').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+
+  const header = document.getElementById('dayResultsHeader');
+  header.textContent = `Matches on June ${d}, 2026`;
+
+  const list = document.getElementById('dayMatchList');
+  list.innerHTML = matches.map(r => {
+    const parts = r.m.split(' vs ');
+    return `<div class="day-match-card">
+      <div class="day-match-teams"><span class="hl">${parts[0].trim()}</span> vs ${parts[1].trim()}</div>
+      <div class="day-match-meta">
+        <div class="day-match-time">${r.t}</div>
+        <div class="day-match-group">Group ${r.g}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('dayResults').classList.add('visible');
+  document.getElementById('dayResults').scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+// init
+renderCards();
 </script>
 </body>
 </html>
