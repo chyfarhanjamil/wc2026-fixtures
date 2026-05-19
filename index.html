@@ -492,6 +492,228 @@
     cursor: default;
     opacity: 0.45;
   }
+
+  /* ── Export button ── */
+  .export-bar {
+    max-width: 1200px;
+    margin: 0 auto 20px;
+    padding: 0 20px;
+    display: none;
+  }
+
+  .export-bar.visible { display: block; }
+
+  .export-btn {
+    width: 100%;
+    padding: 13px 20px;
+    background: linear-gradient(135deg, rgba(201,168,76,0.18), rgba(201,168,76,0.06));
+    border: 1px solid var(--gold);
+    border-radius: 12px;
+    color: var(--gold);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s;
+  }
+
+  .export-btn:hover {
+    background: linear-gradient(135deg, rgba(201,168,76,0.28), rgba(201,168,76,0.1));
+    box-shadow: 0 4px 20px rgba(201,168,76,0.2);
+  }
+
+  /* ── Export modal ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    backdrop-filter: blur(4px);
+  }
+
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 20px;
+    padding: 28px 24px;
+    width: 100%;
+    max-width: 420px;
+    max-height: 85vh;
+    overflow-y: auto;
+    position: relative;
+    animation: slideUp 0.25s ease;
+  }
+
+  @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+  .modal-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 24px;
+    letter-spacing: 2px;
+    color: var(--gold);
+    margin-bottom: 6px;
+  }
+
+  .modal-sub {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 20px;
+    line-height: 1.5;
+  }
+
+  .modal-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: none;
+    border: 1px solid var(--card-border);
+    color: var(--muted);
+    border-radius: 8px;
+    width: 32px;
+    height: 32px;
+    cursor: pointer;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+
+  .modal-close:hover { border-color: var(--gold); color: var(--gold); }
+
+  .modal-section-label {
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+
+  .team-select-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 20px;
+    max-height: 240px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+
+  .team-select-grid::-webkit-scrollbar { width: 4px; }
+  .team-select-grid::-webkit-scrollbar-track { background: transparent; }
+  .team-select-grid::-webkit-scrollbar-thumb { background: var(--card-border); border-radius: 4px; }
+
+  .team-opt {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--card-border);
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+  }
+
+  .team-opt:hover { border-color: rgba(201,168,76,0.4); background: rgba(201,168,76,0.05); }
+
+  .team-opt.selected {
+    border-color: var(--gold);
+    background: rgba(201,168,76,0.12);
+  }
+
+  .team-opt-flag { font-size: 20px; flex-shrink: 0; }
+
+  .team-opt-name { font-size: 14px; font-weight: 600; color: var(--text); flex: 1; }
+
+  .team-opt-grp { font-size: 11px; color: var(--muted); }
+
+  .team-opt-check {
+    width: 18px;
+    height: 18px;
+    border-radius: 5px;
+    border: 2px solid var(--card-border);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    transition: all 0.15s;
+  }
+
+  .team-opt.selected .team-opt-check {
+    background: var(--gold);
+    border-color: var(--gold);
+    color: #000;
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 4px;
+  }
+
+  .btn-select-all {
+    flex: 1;
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid var(--card-border);
+    background: transparent;
+    color: var(--muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-select-all:hover { border-color: var(--gold); color: var(--gold); }
+
+  .btn-download-ics {
+    flex: 2;
+    padding: 12px;
+    border-radius: 10px;
+    border: none;
+    background: var(--gold);
+    color: #000;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .btn-download-ics:hover { background: var(--gold-light); transform: translateY(-1px); }
+  .btn-download-ics:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  .ics-note {
+    margin-top: 14px;
+    padding: 12px 14px;
+    background: rgba(59,130,246,0.08);
+    border: 1px solid rgba(59,130,246,0.2);
+    border-radius: 10px;
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  .ics-note strong { color: var(--accent); }
 </style>
 </head>
 <body>
@@ -551,6 +773,37 @@
   <div class="day-results" id="dayResults">
     <div class="day-results-header" id="dayResultsHeader"></div>
     <div id="dayMatchList"></div>
+  </div>
+</div>
+
+<!-- Export bar (shown in calendar mode) -->
+<div class="export-bar" id="exportBar">
+  <button class="export-btn" onclick="openExportModal()">
+    📲 Add to iPhone / Google Calendar
+  </button>
+</div>
+
+<!-- Export Modal -->
+<div class="modal-overlay" id="exportModal" onclick="handleOverlayClick(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="closeExportModal()">✕</button>
+    <div class="modal-title">📲 Export to Calendar</div>
+    <div class="modal-sub">Choose teams to add their match schedule to your iPhone, Google, or any calendar app.</div>
+
+    <div class="modal-section-label">Select Teams</div>
+    <div class="team-select-grid" id="teamSelectGrid"></div>
+
+    <div class="modal-actions">
+      <button class="btn-select-all" id="selectAllBtn" onclick="toggleSelectAll()">Select All</button>
+      <button class="btn-download-ics" id="downloadBtn" onclick="downloadICS()" disabled>
+        ⬇️ Download .ics
+      </button>
+    </div>
+
+    <div class="ics-note">
+      <strong>iPhone:</strong> Open the .ics file → tap "Add All" → events appear in your Calendar app.<br>
+      <strong>Google:</strong> Go to calendar.google.com → Settings → Import → upload the file.
+    </div>
   </div>
 </div>
 
@@ -730,6 +983,7 @@ function setMode(mode) {
   document.getElementById('groupPanel').classList.toggle('visible', mode==='group');
   document.getElementById('timePanel').classList.toggle('visible', mode==='time');
   document.getElementById('calendarSection').style.display = mode==='calendar' ? 'block' : 'none';
+  document.getElementById('exportBar').classList.toggle('visible', mode==='calendar');
   document.getElementById('grid').style.display = mode==='calendar' ? 'none' : 'grid';
 
   if (mode === 'calendar') {
@@ -1001,6 +1255,193 @@ function renderCalendarResults() {
   }
 
   dayResults.classList.add('visible');
+}
+
+// ── ICS Export ──
+let selectedExportTeams = new Set();
+let allTeamsSelected = false;
+
+function openExportModal() {
+  const grid = document.getElementById('teamSelectGrid');
+  grid.innerHTML = '';
+  selectedExportTeams.clear();
+  allTeamsSelected = false;
+  document.getElementById('selectAllBtn').textContent = 'Select All';
+  updateDownloadBtn();
+
+  // Pre-select team if search has one
+  const q = getSearchedTeam();
+
+  teams.forEach(team => {
+    const flag = FLAGS[team] || '🏳️';
+    const grp = teamMap[team].group;
+    const isPreSelected = q && team.toLowerCase().includes(q);
+    if (isPreSelected) selectedExportTeams.add(team);
+
+    const el = document.createElement('div');
+    el.className = 'team-opt' + (isPreSelected ? ' selected' : '');
+    el.dataset.team = team;
+    el.innerHTML = `
+      <div class="team-opt-flag">${flag}</div>
+      <div class="team-opt-name">${team}</div>
+      <div class="team-opt-grp">Group ${grp}</div>
+      <div class="team-opt-check">${isPreSelected ? '✓' : ''}</div>`;
+    el.onclick = () => toggleTeamOpt(el, team);
+    grid.appendChild(el);
+  });
+
+  updateDownloadBtn();
+  document.getElementById('exportModal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeExportModal() {
+  document.getElementById('exportModal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function handleOverlayClick(e) {
+  if (e.target === document.getElementById('exportModal')) closeExportModal();
+}
+
+function toggleTeamOpt(el, team) {
+  if (selectedExportTeams.has(team)) {
+    selectedExportTeams.delete(team);
+    el.classList.remove('selected');
+    el.querySelector('.team-opt-check').textContent = '';
+  } else {
+    selectedExportTeams.add(team);
+    el.classList.add('selected');
+    el.querySelector('.team-opt-check').textContent = '✓';
+  }
+  allTeamsSelected = selectedExportTeams.size === teams.length;
+  document.getElementById('selectAllBtn').textContent = allTeamsSelected ? 'Deselect All' : 'Select All';
+  updateDownloadBtn();
+}
+
+function toggleSelectAll() {
+  const opts = document.querySelectorAll('.team-opt');
+  if (!allTeamsSelected) {
+    teams.forEach(t => selectedExportTeams.add(t));
+    opts.forEach(el => {
+      el.classList.add('selected');
+      el.querySelector('.team-opt-check').textContent = '✓';
+    });
+    allTeamsSelected = true;
+    document.getElementById('selectAllBtn').textContent = 'Deselect All';
+  } else {
+    selectedExportTeams.clear();
+    opts.forEach(el => {
+      el.classList.remove('selected');
+      el.querySelector('.team-opt-check').textContent = '';
+    });
+    allTeamsSelected = false;
+    document.getElementById('selectAllBtn').textContent = 'Select All';
+  }
+  updateDownloadBtn();
+}
+
+function updateDownloadBtn() {
+  document.getElementById('downloadBtn').disabled = selectedExportTeams.size === 0;
+  document.getElementById('downloadBtn').textContent =
+    selectedExportTeams.size === 0
+      ? '⬇️ Download .ics'
+      : `⬇️ Download ${selectedExportTeams.size === teams.length ? 'All Matches' : selectedExportTeams.size === 1 ? [...selectedExportTeams][0] : selectedExportTeams.size + ' Teams'} .ics`;
+}
+
+function pad(n) { return String(n).padStart(2,'0'); }
+
+function toICSDate(day, timeStr) {
+  // timeStr like "04:00 AM" or "11:00 PM" — Bangladesh time is UTC+6
+  // We store as Bangladesh time, convert to UTC for ICS
+  let [hm, ampm] = timeStr.split(' ');
+  let [h, m] = hm.split(':').map(Number);
+  if (ampm === 'PM' && h !== 12) h += 12;
+  if (ampm === 'AM' && h === 12) h = 0;
+  // Convert BST (UTC+6) to UTC: subtract 6 hours
+  let utcH = h - 6;
+  let utcDay = day;
+  if (utcH < 0) { utcH += 24; utcDay -= 1; }
+  // All matches are in June 2026
+  return `20260${utcDay < 10 ? '6' + pad(utcDay) : '6' + utcDay}T${pad(utcH)}${pad(m)}00Z`;
+}
+
+function toICSDateEnd(day, timeStr) {
+  // Match duration ~2 hours
+  let [hm, ampm] = timeStr.split(' ');
+  let [h, m] = hm.split(':').map(Number);
+  if (ampm === 'PM' && h !== 12) h += 12;
+  if (ampm === 'AM' && h === 12) h = 0;
+  let utcH = h - 6 + 2; // add 2hr for end time
+  let utcDay = day;
+  if (utcH >= 24) { utcH -= 24; utcDay += 1; }
+  if (utcH < 0) { utcH += 24; utcDay -= 1; }
+  return `20260${utcDay < 10 ? '6' + pad(utcDay) : '6' + utcDay}T${pad(utcH)}${pad(m)}00Z`;
+}
+
+function downloadICS() {
+  const selectedTeamList = [...selectedExportTeams];
+  // Get all matches involving selected teams (deduplicated by match)
+  const seen = new Set();
+  const matchesToExport = [];
+
+  RAW.forEach(r => {
+    const involves = r.teams.some(t => selectedTeamList.includes(t));
+    if (involves && !seen.has(r.m + r.day)) {
+      seen.add(r.m + r.day);
+      matchesToExport.push(r);
+    }
+  });
+
+  const now = new Date().toISOString().replace(/[-:.]/g,'').slice(0,15) + 'Z';
+
+  const events = matchesToExport.map((r, i) => {
+    const dtstart = toICSDate(r.day, r.t);
+    const dtend = toICSDateEnd(r.day, r.t);
+    const uid = `wc2026-match-${r.day}-${i}@wc2026fixtures`;
+    return [
+      'BEGIN:VEVENT',
+      `UID:${uid}`,
+      `DTSTAMP:${now}`,
+      `DTSTART:${dtstart}`,
+      `DTEND:${dtend}`,
+      `SUMMARY:⚽ ${r.m} (Group ${r.g})`,
+      `DESCRIPTION:FIFA World Cup 2026 Group Stage\\nMatch: ${r.m}\\nGroup: ${r.g}\\nBangladesh Time: ${r.t}`,
+      `LOCATION:FIFA World Cup 2026`,
+      'END:VEVENT'
+    ].join('\r\n');
+  });
+
+  const ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//WC2026 Fixtures//EN',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    `X-WR-CALNAME:FIFA World Cup 2026 – ${selectedTeamList.length === teams.length ? 'All Matches' : selectedTeamList.join(', ')}`,
+    'X-WR-TIMEZONE:Asia/Dhaka',
+    ...events,
+    'END:VCALENDAR'
+  ].join('\r\n');
+
+  const blob = new Blob([ics], {type: 'text/calendar;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const fname = selectedTeamList.length === 1
+    ? `wc2026-${selectedTeamList[0].replace(/\s+/g,'-')}.ics`
+    : selectedTeamList.length === teams.length
+    ? 'wc2026-all-matches.ics'
+    : `wc2026-selected-teams.ics`;
+  a.download = fname;
+  a.click();
+  URL.revokeObjectURL(url);
+
+  // Brief feedback
+  const btn = document.getElementById('downloadBtn');
+  const orig = btn.textContent;
+  btn.textContent = '✅ Downloaded!';
+  setTimeout(() => btn.textContent = orig, 2000);
 }
 
 // init
