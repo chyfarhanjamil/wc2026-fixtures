@@ -1,13 +1,9 @@
 /**
- * calendar.js — Calendar view with live score awareness
+ * calendar.js — Calendar view (i18n-aware)
  */
 'use strict';
 
 const Calendar = (() => {
-  const DAYS   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  const MONTHS = ['January','February','March','April','May','June',
-                  'July','August','September','October','November','December'];
-
   let calMonth    = 6;
   let calYear     = 2026;
   let selectedKey = null;
@@ -31,14 +27,15 @@ const Calendar = (() => {
   }
 
   function render() {
-    const q = getQ();
+    const q      = getQ();
+    const months = I18n.months();
     document.getElementById('calTitle').textContent =
-      `${MONTHS[calMonth-1].toUpperCase()} ${calYear}`;
+      `${months[calMonth-1].toUpperCase()} ${calYear}`;
 
     const calGrid = document.getElementById('calGrid');
     calGrid.innerHTML = '';
 
-    DAYS.forEach(d => {
+    I18n.days().forEach(d => {
       const el = document.createElement('div');
       el.className = 'cal-day-name';
       el.textContent = d;
@@ -66,7 +63,6 @@ const Calendar = (() => {
       const el = document.createElement('div');
       el.className = 'cal-day';
 
-      // Check if any match today is live
       const hasLive = allMatches.some(f => {
         const ld = Live.forFixture(f);
         return ld && (ld.status === 'IN_PLAY' || ld.status === 'PAUSED');
@@ -78,8 +74,11 @@ const Calendar = (() => {
         if (filtered.length > 0) {
           el.classList.add('has-match');
           if (hasLive) el.classList.add('has-live');
-          el.innerHTML += `<div class="match-dot${hasLive?' match-dot--live':''}"></div>
-            <div class="match-count-label">${filtered.length} match${filtered.length>1?'es':''}</div>`;
+          const label = filtered.length === 1
+            ? I18n.t('cal_match',   { n: filtered.length })
+            : I18n.t('cal_matches', { n: filtered.length });
+          el.innerHTML += `<div class="match-dot${hasLive ? ' dot--live' : ''}"></div>
+            <div class="match-count-label">${label}</div>`;
           el.onclick = () => selectDay(key, el);
         } else {
           el.classList.add('has-match-other');
@@ -110,17 +109,13 @@ const Calendar = (() => {
           (f.isKO && (f.home.toLowerCase().includes(q) || f.away.toLowerCase().includes(q))))
       : allMatches;
 
-    const [year,month,day] = selectedKey.split('-').map(Number);
-    const MS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    const dateLabel = `${MS[month-1]} ${day}, ${year}`;
+    const [year, month, day] = selectedKey.split('-').map(Number);
+    const ms   = I18n.monthsShort();
+    const dateLabel = `${ms[month-1]} ${day}, ${year}`;
 
     const header    = document.getElementById('dayResultsHeader');
     const list      = document.getElementById('dayMatchList');
     const container = document.getElementById('dayResults');
-
-    header.textContent = q
-      ? `Matches on ${dateLabel} matching "${q}"`
-      : `All matches — ${dateLabel}`;
 
     if (filtered.length === 0) {
       const teamMatches = q
@@ -128,12 +123,14 @@ const Calendar = (() => {
             f.teams.some(t => t.toLowerCase().includes(q)) ||
             (f.isKO && (f.home.toLowerCase().includes(q) || f.away.toLowerCase().includes(q))))
         : [];
-      header.textContent = `No matches for "${q}" on ${dateLabel}`;
+      header.textContent = I18n.t('cal_no_match', { q, date: dateLabel });
       list.innerHTML = teamMatches.length
-        ? `<div class="no-match-note">Other matches for this search:</div>` +
-          teamMatches.map(matchCard).join('')
-        : `<div class="no-match-note">No matches found.</div>`;
+        ? `<div class="no-match-note">${I18n.t('cal_other_matches')}</div>` + teamMatches.map(matchCard).join('')
+        : `<div class="no-match-note">${I18n.t('cal_no_results')}</div>`;
     } else {
+      header.textContent = q
+        ? I18n.t('cal_day_header_q', { date: dateLabel, q })
+        : I18n.t('cal_day_header',   { date: dateLabel });
       list.innerHTML = filtered.map(matchCard).join('');
     }
 
@@ -141,29 +138,24 @@ const Calendar = (() => {
   }
 
   function matchCard(f) {
-    const score   = Live.scoreLabel(f);
-    const badge   = Live.statusBadge(f);
-    const scorers = Live.scorersHtml(f);
+    const ld    = Live.forFixture(f);
+    const score = Live.scoreLabel(f);
+    const badge = Live.statusBadge(f);
+    const scoreOrVs = score
+      ? `<span class="match-score ${ld && ld.status==='IN_PLAY' ? 'score--live' : ''}">${score}</span>`
+      : `<span class="day-match-vs-sep">${I18n.t('vs')}</span>`;
     const stageTag = f.isKO
       ? `<div class="day-match-group">${f.label}</div>`
-      : `<div class="day-match-group">Group ${f.group}</div>`;
-
-    const scoreHtml = score
-      ? `<span class="day-match-score ${Live.forFixture(f)?.status==='IN_PLAY'?'score--live':''}">${score}</span>`
-      : 'vs';
-
+      : `<div class="day-match-group">${I18n.t('group_prefix')} ${f.group}</div>`;
     return `
       <div class="day-match-card">
         <div class="day-match-teams">
-          <span class="hl">${WC2026.FLAGS[f.home]||''} ${f.home}</span>
-          <span class="day-score-area">${scoreHtml} ${badge}</span>
-          <span>${WC2026.FLAGS[f.away]||''} ${f.away}</span>
+          <span class="hl">${f.home}</span> ${scoreOrVs} ${f.away} ${badge}
         </div>
-        ${scorers ? `<div class="day-match-scorers">${scorers}</div>` : ''}
         <div class="day-match-meta">
           <div class="day-match-time">${f.tzTime}</div>
           ${stageTag}
-          <div class="day-match-venue">📍 ${f.venue}</div>
+          <div class="day-match-venue">${f.venue}</div>
         </div>
       </div>`;
   }

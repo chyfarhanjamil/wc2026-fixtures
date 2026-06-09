@@ -1,5 +1,5 @@
 /**
- * teamGrid.js — Team card grid with live scores, scorers, match details
+ * teamGrid.js — Team card grid (i18n-aware)
  */
 'use strict';
 
@@ -28,8 +28,8 @@ const TeamGrid = (() => {
           <div class="flag-circle">${flag}</div>
           <div class="team-info">
             <h2>${team}</h2>
-            <div class="group-label">Group ${group}
-              <span class="count-badge">${matches.length} matches</span>
+            <div class="group-label">${I18n.t('group_prefix')} ${group}
+              <span class="count-badge">${I18n.t('matches_count', { n: matches.length })}</span>
             </div>
           </div>
         </div>
@@ -65,7 +65,7 @@ const TeamGrid = (() => {
 
     const scoreCell = score
       ? `<span class="match-score ${ld && ld.status === 'IN_PLAY' ? 'score--live' : ''}">${score}</span>`
-      : `<span class="match-sep">vs</span>`;
+      : `<span class="match-sep">${I18n.t('vs')}</span>`;
 
     return `<div class="match-row" data-slot="${f.slot}" data-group="${f.group}" data-id="${f.id}">
       <div class="match-date">${f.tzDate}</div>
@@ -122,7 +122,7 @@ const TeamGrid = (() => {
       if (shownRows === 0) {
         const available = [...new Set([...rows].map(r => r.dataset.slot))];
         inlineMsg.textContent = activeTimeSlot
-          ? `No ${activeTimeSlot} matches for ${card.dataset.team}. They play in: ${available.join(', ')}.`
+          ? I18n.t('no_slot_matches', { slot: activeTimeSlot, team: card.dataset.team, slots: available.join(', ') })
           : '';
         inlineMsg.classList.toggle('hidden', !activeTimeSlot);
       } else {
@@ -132,7 +132,9 @@ const TeamGrid = (() => {
 
     const noRes = document.getElementById('noResults');
     if (noRes) {
-      noRes.textContent = q ? `No team found matching "${q}".` : 'No teams match current filters.';
+      noRes.textContent = q
+        ? I18n.t('no_team_found', { q })
+        : I18n.t('no_teams_filter');
       noRes.classList.toggle('hidden', visible > 0);
     }
   }

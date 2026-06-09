@@ -379,18 +379,22 @@ const WC2026 = (() => {
     return { month: d.getUTCMonth() + 1, day: d.getUTCDate(), year: d.getUTCFullYear() };
   }
 
+  /* Slot keys are stable language-neutral identifiers */
+  const SLOT_KEYS = ['slot_early','slot_morning','slot_afternoon','slot_evening'];
+
   function _getTimeSlot(d) {
     const h = d.getUTCHours();
-    if (h >= 0  && h < 6)  return 'Early Morning (12AM–6AM)';
-    if (h >= 6  && h < 12) return 'Morning (6AM–12PM)';
-    if (h >= 12 && h < 18) return 'Afternoon (12PM–6PM)';
-    return 'Evening/Night (6PM–12AM)';
+    if (h >= 0  && h < 6)  return 'slot_early';
+    if (h >= 6  && h < 12) return 'slot_morning';
+    if (h >= 12 && h < 18) return 'slot_afternoon';
+    return 'slot_evening';
   }
 
   function stageLabel(stage) {
+    /* Returns the i18n key; caller uses I18n.t() */
     return {
-      group:'Group Stage', r32:'Round of 32', r16:'Round of 16',
-      qf:'Quarter-Final', sf:'Semi-Final', '3rd':'3rd Place', final:'Final'
+      group:'stage_group', r32:'stage_r32', r16:'stage_r16',
+      qf:'stage_qf', sf:'stage_sf', '3rd':'stage_3rd', final:'stage_final'
     }[stage] || stage;
   }
 
@@ -408,7 +412,8 @@ const WC2026 = (() => {
         tzDate:    _formatDate(d),
         tzDateObj: _dateObj(d),
         slot:      _getTimeSlot(d),
-        label:     stageLabel(f.stage),
+        labelKey:  stageLabel(f.stage),
+        get label() { return (typeof I18n !== 'undefined') ? I18n.t(this.labelKey) : this.labelKey; },
         teams:     f.stage === 'group' ? [f.home, f.away] : [],
         isKO:      f.stage !== 'group',
         // keep bst* aliases so old code still works
@@ -442,12 +447,7 @@ const WC2026 = (() => {
 
   const teams    = Object.keys({}).concat([]); // populated lazily via getter
   const groups   = [...new Set(FIXTURES_RAW.filter(f=>f.group).map(f=>f.group))].sort();
-  const TIME_SLOTS = [
-    'Early Morning (12AM–6AM)',
-    'Morning (6AM–12PM)',
-    'Afternoon (12PM–6PM)',
-    'Evening/Night (6PM–12AM)'
-  ];
+  const TIME_SLOTS = ['slot_early','slot_morning','slot_afternoon','slot_evening'];
 
   /* public teams list must be lazy because teamMap is rebuilt */
   function getTeams() { return Object.keys(teamMap).sort(); }

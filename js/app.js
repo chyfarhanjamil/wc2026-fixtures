@@ -1,5 +1,5 @@
 /**
- * app.js — Main controller
+ * app.js — Main controller (i18n-aware)
  */
 'use strict';
 
@@ -9,23 +9,41 @@ const App = (() => {
   let activeTimeSlot = null;
 
   function init() {
+    I18n.init();
+    I18n.buildSwitcher('langSwitcherWrap');
+
     // Group chips
     const groupPanel = document.getElementById('groupPanel');
+    groupPanel.innerHTML = '';
+    const allBtn = document.createElement('button');
+    allBtn.className = 'filter-chip active';
+    allBtn.textContent = I18n.t('all_groups');
+    allBtn.onclick = () => setGroup(null, allBtn);
+    groupPanel.appendChild(allBtn);
+
     WC2026.groups.forEach(g => {
       const btn = document.createElement('button');
       btn.className = 'filter-chip';
-      btn.textContent = `Group ${g}`;
+      btn.textContent = `${I18n.t('group_prefix')} ${g}`;
       btn.onclick = () => setGroup(g, btn);
       groupPanel.appendChild(btn);
     });
 
     // Time chips
     const timePanel = document.getElementById('timePanel');
-    WC2026.TIME_SLOTS.forEach(slot => {
+    timePanel.innerHTML = '';
+    const allTimeBtn = document.createElement('button');
+    allTimeBtn.className = 'filter-chip active';
+    allTimeBtn.textContent = I18n.t('all_times');
+    allTimeBtn.onclick = () => setTimeSlot(null, allTimeBtn);
+    timePanel.appendChild(allTimeBtn);
+
+    I18n.timeSlots().forEach((slot, i) => {
       const btn = document.createElement('button');
       btn.className = 'filter-chip';
       btn.textContent = slot;
-      btn.onclick = () => setTimeSlot(slot, btn);
+      btn.dataset.slotIndex = i;
+      btn.onclick = () => setTimeSlot(WC2026.TIME_SLOTS[i], btn);
       timePanel.appendChild(btn);
     });
 
@@ -33,17 +51,65 @@ const App = (() => {
     TeamGrid.init();
     Bracket.render();
 
-    // Hook live updates
+    // Static string wiring
+    _applyStaticStrings();
+
     Live.onUpdate(() => {
       TeamGrid.refreshLive();
       if (currentMode === 'calendar') Calendar.refreshLive();
       if (currentMode === 'bracket')  Bracket.refreshLive();
     });
 
-    // Start live polling
     Live.init();
-
     setMode('teams');
+  }
+
+  function rerenderAll() {
+    _applyStaticStrings();
+    // Rebuild filter chips with new language
+    const groupPanel = document.getElementById('groupPanel');
+    groupPanel.querySelectorAll('.filter-chip').forEach((btn, i) => {
+      if (i === 0) btn.textContent = I18n.t('all_groups');
+      else btn.textContent = `${I18n.t('group_prefix')} ${WC2026.groups[i-1]}`;
+    });
+    const timePanel = document.getElementById('timePanel');
+    timePanel.querySelectorAll('.filter-chip').forEach((btn, i) => {
+      if (i === 0) btn.textContent = I18n.t('all_times');
+      else btn.textContent = I18n.timeSlots()[i-1];
+    });
+
+    TeamGrid.init(true);
+    if (currentMode === 'calendar') Calendar.render();
+    else if (currentMode === 'bracket') Bracket.render();
+    else TeamGrid.render({ mode: currentMode, activeGroup, activeTimeSlot });
+
+    // Mode buttons
+    const modeKeys = ['teams','group','time','calendar','bracket'];
+    const modeI18n = ['mode_teams','mode_group','mode_time','mode_calendar','mode_knockout'];
+    modeKeys.forEach((m, i) => {
+      const btn = document.getElementById(`mode${_cap(m)}`);
+      if (btn) {
+        const icon = btn.querySelector('.icon');
+        const iconText = icon ? icon.outerHTML : '';
+        btn.innerHTML = iconText + ' ' + I18n.t(modeI18n[i]);
+      }
+    });
+
+    // Export button
+    const exportBtn = document.querySelector('.export-btn');
+    if (exportBtn) exportBtn.textContent = I18n.t('export_btn');
+  }
+
+  function _applyStaticStrings() {
+    const tz  = WC2026.getTimezone();
+    const sub = document.getElementById('headerSub');
+    if (sub) sub.textContent = I18n.t('header_sub', { tz: tz.label });
+
+    const search = document.getElementById('search');
+    if (search) search.placeholder = I18n.t('search_placeholder');
+
+    const tzLabelEl = document.querySelector('.tz-label span');
+    if (tzLabelEl) tzLabelEl.textContent = I18n.t('tz_label');
   }
 
   function _buildTzSelector() {
@@ -63,9 +129,9 @@ const App = (() => {
   }
 
   function _afterTzChange() {
-    const tz = WC2026.getTimezone();
+    const tz  = WC2026.getTimezone();
     const sub = document.getElementById('headerSub');
-    if (sub) sub.textContent = `All 104 Matches · Group Stage to Final · ${tz.label}`;
+    if (sub) sub.textContent = I18n.t('header_sub', { tz: tz.label });
     TeamGrid.init(true);
     if (currentMode === 'calendar') Calendar.render();
     else if (currentMode === 'bracket') Bracket.render();
@@ -122,7 +188,7 @@ const App = (() => {
 
   function _cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
 
-  return { init, setMode, setGroup, setTimeSlot, onSearch };
+  return { init, setMode, setGroup, setTimeSlot, onSearch, rerenderAll };
 })();
 
 document.addEventListener('DOMContentLoaded', App.init);

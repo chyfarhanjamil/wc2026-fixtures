@@ -1072,3 +1072,69 @@ header p {
   .standings-table th, .standings-table td { padding: 6px 4px; font-size: 11px; }
   .standing-flag { font-size: 14px; margin-right: 4px; }
 }
+
+/* ── Language Switcher ───────────────────────────────────────────────────── */
+.lang-switcher-outer {
+  max-width: 1200px;
+  margin: 0 auto 18px;
+  padding: 0 20px;
+}
+
+.lang-switcher {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 12px 16px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  align-items: center;
+}
+
+.lang-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--card-border);
+  background: transparent;
+  color: var(--muted);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all .18s;
+  white-space: nowrap;
+}
+
+.lang-btn:hover {
+  border-color: rgba(201,168,76,.4);
+  color: var(--text);
+  background: rgba(201,168,76,.06);
+}
+
+.lang-btn.active {
+  background: linear-gradient(135deg, rgba(201,168,76,.22), rgba(201,168,76,.06));
+  border-color: var(--gold);
+  color: var(--gold);
+  font-weight: 600;
+}
+
+.lang-flag { font-size: 15px; }
+.lang-name { font-size: 12px; }
+
+/* RTL support */
+[dir="rtl"] .match-row            { direction: rtl; }
+[dir="rtl"] .card-header          { direction: rtl; }
+[dir="rtl"] .controls             { direction: rtl; }
+[dir="rtl"] .day-match-meta       { align-items: flex-start; }
+[dir="rtl"] .bracket-matchup      { direction: rtl; }
+[dir="rtl"] .search-wrap svg      { left: auto; right: 16px; }
+[dir="rtl"] .search-wrap input    { padding: 14px 48px 14px 20px; }
+[dir="rtl"] .mode-bar             { direction: rtl; }
+[dir="rtl"] .lang-switcher        { direction: ltr; } /* always ltr for the switcher itself */
+[dir="rtl"] .standings-table      { direction: rtl; }
+[dir="rtl"] .team-info            { text-align: right; }
+[dir="rtl"] .modal                { direction: rtl; }
+[dir="rtl"] .modal-close          { right: auto; left: 16px; }

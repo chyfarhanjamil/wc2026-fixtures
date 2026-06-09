@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" dir="ltr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -20,6 +20,9 @@
   <h1>⚽ FIFA WORLD CUP 2026</h1>
   <p id="headerSub">All 104 Matches · Group Stage to Final · Bangladesh Time</p>
 </header>
+
+<!-- ── Language Switcher ────────────────────────────────────────────────── -->
+<div id="langSwitcherWrap" class="lang-switcher-outer"></div>
 
 <!-- ── Controls ─────────────────────────────────────────────────────────── -->
 <div class="controls">
@@ -106,7 +109,8 @@
   </div>
 </div>
 
-<!-- Scripts: data first, live second, modules, app last -->
+<!-- Scripts: i18n first, then data, then live + modules, app last -->
+<script src="js/i18n.js"></script>
 <script src="js/data.js"></script>
 <script src="js/live.js"></script>
 <script src="js/standings.js"></script>
