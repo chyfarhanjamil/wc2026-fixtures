@@ -1,13 +1,9 @@
-/**
- * standings.js — Group standings (i18n-aware)
- */
 'use strict';
 
 const Standings = (() => {
 
   function calcGroup(groupLetter) {
-    const fixtures = WC2026.FIXTURES.filter(f =>
-      f.stage === 'group' && f.group === groupLetter);
+    const fixtures = WC2026.FIXTURES.filter(f => f.stage==='group' && f.group===groupLetter);
     const rows = {};
     fixtures.forEach(f => {
       [f.home, f.away].forEach(t => {
@@ -16,7 +12,7 @@ const Standings = (() => {
     });
     fixtures.forEach(f => {
       const ld = Live.forFixture(f);
-      if (!ld || ld.scoreHome === null || ld.status === 'SCHEDULED' || ld.status === 'TIMED') return;
+      if (!ld || ld.scoreHome===null || ld.status==='SCHEDULED' || ld.status==='TIMED') return;
       const hg = ld.scoreHome, ag = ld.scoreAway;
       const h = rows[f.home], a = rows[f.away];
       h.p++; a.p++;
@@ -32,19 +28,20 @@ const Standings = (() => {
   }
 
   function renderTable(groupLetter) {
-    const rows = calcGroup(groupLetter);
-    const allFixtures = WC2026.FIXTURES.filter(f => f.stage === 'group' && f.group === groupLetter);
-    const played = allFixtures.filter(f => {
+    const rows       = calcGroup(groupLetter);
+    const allFix     = WC2026.FIXTURES.filter(f => f.stage==='group' && f.group===groupLetter);
+    const played     = allFix.filter(f => {
       const ld = Live.forFixture(f);
-      return ld && ld.scoreHome !== null && ld.status !== 'SCHEDULED' && ld.status !== 'TIMED';
+      return ld && ld.scoreHome!==null && ld.status!=='SCHEDULED' && ld.status!=='TIMED';
     }).length;
-    const rankIcon = ['🥇','🥈','🥉',''];
+    const rankIcon   = ['🥇','🥈','🥉',''];
+    const dispGroup  = I18n.groupLetter(groupLetter);
 
     let html = `
       <div class="standings-table-wrap">
         <div class="standings-group-title">
-          ${I18n.t('group_prefix')} ${groupLetter}
-          <span class="standings-progress">${played}/${allFixtures.length} ${I18n.t('standings_col_p').toLowerCase()}</span>
+          ${I18n.t('group_prefix')} ${dispGroup}
+          <span class="standings-progress">${I18n.num(played)}/${I18n.num(allFix.length)}</span>
         </div>
         <table class="standings-table">
           <thead>
@@ -55,8 +52,8 @@ const Standings = (() => {
               <th title="${I18n.t('standings_col_w')}">${I18n.t('standings_col_w')}</th>
               <th title="${I18n.t('standings_col_d')}">${I18n.t('standings_col_d')}</th>
               <th title="${I18n.t('standings_col_l')}">${I18n.t('standings_col_l')}</th>
-              <th title="GF">GF</th>
-              <th title="GA">GA</th>
+              <th>GF</th>
+              <th>GA</th>
               <th title="${I18n.t('standings_col_gd')}">${I18n.t('standings_col_gd')}</th>
               <th title="${I18n.t('standings_col_pts')}">${I18n.t('standings_col_pts')}</th>
             </tr>
@@ -64,21 +61,24 @@ const Standings = (() => {
           <tbody>`;
 
     rows.forEach((r, i) => {
-      const flag = WC2026.FLAGS[r.team] || '🏳️';
-      const pos  = i + 1;
-      const qual = pos <= 2 ? 'standing-qual' : pos === 3 ? 'standing-third' : '';
-      const icon = rankIcon[i] || '';
+      const flag    = WC2026.FLAGS[r.team] || '🏳️';
+      const pos     = i + 1;
+      const qual    = pos <= 2 ? 'standing-qual' : pos === 3 ? 'standing-third' : '';
+      const icon    = rankIcon[i] || '';
+      const dispName = I18n.teamName(r.team);
+      const gd = r.gd > 0 ? `+${I18n.num(r.gd)}` : I18n.num(r.gd);
       html += `
             <tr class="standing-row ${qual}">
-              <td class="col-pos">${icon || pos}</td>
+              <td class="col-pos">${icon || I18n.num(pos)}</td>
               <td class="col-team">
                 <span class="standing-flag">${flag}</span>
-                <span class="standing-name">${r.team}</span>
+                <span class="standing-name">${dispName}</span>
               </td>
-              <td>${r.p}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td>
-              <td>${r.gf}</td><td>${r.ga}</td>
-              <td class="${r.gd>0?'pos-gd':r.gd<0?'neg-gd':''}">${r.gd>0?'+'+r.gd:r.gd}</td>
-              <td class="col-pts"><strong>${r.pts}</strong></td>
+              <td>${I18n.num(r.p)}</td><td>${I18n.num(r.w)}</td>
+              <td>${I18n.num(r.d)}</td><td>${I18n.num(r.l)}</td>
+              <td>${I18n.num(r.gf)}</td><td>${I18n.num(r.ga)}</td>
+              <td class="${r.gd>0?'pos-gd':r.gd<0?'neg-gd':''}">${gd}</td>
+              <td class="col-pts"><strong>${I18n.num(r.pts)}</strong></td>
             </tr>`;
     });
 

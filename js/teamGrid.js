@@ -1,6 +1,3 @@
-/**
- * teamGrid.js — Team card grid (i18n-aware)
- */
 'use strict';
 
 const TeamGrid = (() => {
@@ -15,11 +12,13 @@ const TeamGrid = (() => {
 
     WC2026.teams.forEach(team => {
       const { group, matches } = WC2026.teamMap[team];
-      const flag = WC2026.FLAGS[team] || '🏳️';
+      const flag       = WC2026.FLAGS[team] || '🏳️';
+      const dispTeam   = I18n.teamName(team);
+      const dispGroup  = I18n.groupLetter(group);
 
       const card = document.createElement('div');
       card.className    = 'team-card';
-      card.dataset.team  = team;
+      card.dataset.team  = team;       // always English for search/filter
       card.dataset.group = group;
       card.id = `card-${_safe(team)}`;
 
@@ -27,9 +26,9 @@ const TeamGrid = (() => {
         <div class="card-header">
           <div class="flag-circle">${flag}</div>
           <div class="team-info">
-            <h2>${team}</h2>
-            <div class="group-label">${I18n.t('group_prefix')} ${group}
-              <span class="count-badge">${I18n.t('matches_count', { n: matches.length })}</span>
+            <h2>${dispTeam}</h2>
+            <div class="group-label">${I18n.t('group_prefix')} ${dispGroup}
+              <span class="count-badge">${I18n.t('matches_count', { n: I18n.num(matches.length) })}</span>
             </div>
           </div>
         </div>
@@ -41,8 +40,7 @@ const TeamGrid = (() => {
     });
 
     const noRes = document.createElement('div');
-    noRes.id        = 'noResults';
-    noRes.className = 'no-results hidden';
+    noRes.id = 'noResults'; noRes.className = 'no-results hidden';
     grid.appendChild(noRes);
   }
 
@@ -55,24 +53,26 @@ const TeamGrid = (() => {
   }
 
   function _rowHtml(team, f) {
-    const ld      = Live.forFixture(f);
-    const score   = Live.scoreLabel(f);
-    const badge   = Live.statusBadge(f);
+    const ld    = Live.forFixture(f);
+    const score = Live.scoreLabel(f);
+    const badge = Live.statusBadge(f);
     const scorers = Live.scorersHtml(f);
 
-    const homeHl  = f.home === team ? 'highlight' : '';
-    const awayHl  = f.away === team ? 'highlight' : '';
+    const dHome = f.displayHome || f.home;
+    const dAway = f.displayAway || f.away;
+    const homeHl = f.home === team ? 'highlight' : '';
+    const awayHl = f.away === team ? 'highlight' : '';
 
     const scoreCell = score
-      ? `<span class="match-score ${ld && ld.status === 'IN_PLAY' ? 'score--live' : ''}">${score}</span>`
+      ? `<span class="match-score ${ld && ld.status==='IN_PLAY' ? 'score--live':''}">${score}</span>`
       : `<span class="match-sep">${I18n.t('vs')}</span>`;
 
     return `<div class="match-row" data-slot="${f.slot}" data-group="${f.group}" data-id="${f.id}">
       <div class="match-date">${f.tzDate}</div>
       <div class="match-vs">
-        <span class="${homeHl}">${f.home}</span>
+        <span class="${homeHl}">${dHome}</span>
         ${scoreCell}
-        <span class="${awayHl}">${f.away}</span>
+        <span class="${awayHl}">${dAway}</span>
         ${badge}
       </div>
       <div class="match-time">${f.tzTime}</div>
@@ -93,16 +93,15 @@ const TeamGrid = (() => {
     let visible = 0;
 
     cards.forEach(card => {
-      const teamName  = card.dataset.team.toLowerCase();
+      const teamName  = card.dataset.team.toLowerCase();   // English
       const teamGroup = card.dataset.group;
 
-      const matchesSearch = !q || teamName.includes(q);
+      const matchesSearch = !q || teamName.includes(q) ||
+        I18n.teamName(card.dataset.team).toLowerCase().includes(q);
       const matchesGroup  = mode !== 'group' || !activeGroup || teamGroup === activeGroup
                             || (q && matchesSearch);
 
-      if (!matchesSearch || !matchesGroup) {
-        card.classList.add('hidden'); return;
-      }
+      if (!matchesSearch || !matchesGroup) { card.classList.add('hidden'); return; }
 
       const rows = card.querySelectorAll('.match-row');
       let shownRows = 0;
@@ -118,23 +117,21 @@ const TeamGrid = (() => {
       card.classList.remove('hidden');
       visible++;
 
-      const inlineMsg = card.querySelector('.no-match-in-filter');
+      const msg = card.querySelector('.no-match-in-filter');
       if (shownRows === 0) {
-        const available = [...new Set([...rows].map(r => r.dataset.slot))];
-        inlineMsg.textContent = activeTimeSlot
-          ? I18n.t('no_slot_matches', { slot: activeTimeSlot, team: card.dataset.team, slots: available.join(', ') })
+        const available = [...new Set([...rows].map(r => I18n.slotLabel(r.dataset.slot)))];
+        msg.textContent = activeTimeSlot
+          ? I18n.t('no_slot_matches', { slot: I18n.slotLabel(activeTimeSlot), team: I18n.teamName(card.dataset.team), slots: available.join(', ') })
           : '';
-        inlineMsg.classList.toggle('hidden', !activeTimeSlot);
+        msg.classList.toggle('hidden', !activeTimeSlot);
       } else {
-        inlineMsg.classList.add('hidden');
+        msg.classList.add('hidden');
       }
     });
 
     const noRes = document.getElementById('noResults');
     if (noRes) {
-      noRes.textContent = q
-        ? I18n.t('no_team_found', { q })
-        : I18n.t('no_teams_filter');
+      noRes.textContent = q ? I18n.t('no_team_found', { q }) : I18n.t('no_teams_filter');
       noRes.classList.toggle('hidden', visible > 0);
     }
   }

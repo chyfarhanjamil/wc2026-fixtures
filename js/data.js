@@ -364,15 +364,19 @@ const WC2026 = (() => {
   }
 
   function _formatTime(d) {
-    const h = d.getUTCHours(), m = d.getUTCMinutes();
-    const ampm = h >= 12 ? 'PM' : 'AM';
-    const h12  = ((h % 12) || 12);
-    return `${String(h12).padStart(2,'0')}:${String(m).padStart(2,'0')} ${ampm}`;
+    return (typeof I18n !== 'undefined') ? I18n.formatTime(d) : (() => {
+      const h = d.getUTCHours(), m = d.getUTCMinutes();
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      const h12 = (h % 12) || 12;
+      return `${String(h12).padStart(2,'0')}:${String(m).padStart(2,'0')} ${ampm}`;
+    })();
   }
 
   function _formatDate(d) {
-    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    return `${months[d.getUTCMonth()]} ${d.getUTCDate()}`;
+    return (typeof I18n !== 'undefined') ? I18n.formatDate(d) : (() => {
+      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      return `${months[d.getUTCMonth()]} ${d.getUTCDate()}`;
+    })();
   }
 
   function _dateObj(d) {
@@ -406,8 +410,14 @@ const WC2026 = (() => {
   function _rebuildDerived() {
     FIXTURES = FIXTURES_RAW.map(f => {
       const d = _applyOffset(f.utc, _tzOffset);
+      const tHome  = (f.stage === 'group' && typeof I18n !== 'undefined') ? I18n.teamName(f.home) : f.home;
+      const tAway  = (f.stage === 'group' && typeof I18n !== 'undefined') ? I18n.teamName(f.away) : f.away;
+      const tGroup = (f.group && typeof I18n !== 'undefined') ? I18n.groupLetter(f.group) : f.group;
       return {
         ...f,
+        displayHome:  tHome,
+        displayAway:  tAway,
+        displayGroup: tGroup,
         tzTime:    _formatTime(d),
         tzDate:    _formatDate(d),
         tzDateObj: _dateObj(d),
@@ -416,7 +426,6 @@ const WC2026 = (() => {
         get label() { return (typeof I18n !== 'undefined') ? I18n.t(this.labelKey) : this.labelKey; },
         teams:     f.stage === 'group' ? [f.home, f.away] : [],
         isKO:      f.stage !== 'group',
-        // keep bst* aliases so old code still works
         bstTime:   _formatTime(d),
         bstDate:   _formatDate(d),
         bstDateObj:_dateObj(d),
@@ -452,12 +461,14 @@ const WC2026 = (() => {
   /* public teams list must be lazy because teamMap is rebuilt */
   function getTeams() { return Object.keys(teamMap).sort(); }
 
+  function rebuildForLang() { _rebuildDerived(); }
+
   return {
     get FIXTURES() { return FIXTURES; },
     get teamMap()  { return teamMap;  },
     get dayMap()   { return dayMap;   },
     get teams()    { return getTeams(); },
     FLAGS, groups, TIME_SLOTS, TIMEZONES,
-    setTimezone, getTimezone, stageLabel,
+    setTimezone, getTimezone, stageLabel, rebuildForLang,
   };
 })();

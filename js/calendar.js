@@ -1,12 +1,7 @@
-/**
- * calendar.js — Calendar view (i18n-aware)
- */
 'use strict';
 
 const Calendar = (() => {
-  let calMonth    = 6;
-  let calYear     = 2026;
-  let selectedKey = null;
+  let calMonth = 6, calYear = 2026, selectedKey = null;
 
   function getQ() {
     const el = document.getElementById('search');
@@ -27,14 +22,14 @@ const Calendar = (() => {
   }
 
   function render() {
-    const q      = getQ();
-    const months = I18n.months();
+    const q = getQ();
     document.getElementById('calTitle').textContent =
-      `${months[calMonth-1].toUpperCase()} ${calYear}`;
+      I18n.formatCalendarHeading(calMonth - 1, calYear);
 
     const calGrid = document.getElementById('calGrid');
     calGrid.innerHTML = '';
 
+    // Day name headers in current language
     I18n.days().forEach(d => {
       const el = document.createElement('div');
       el.className = 'cal-day-name';
@@ -42,7 +37,7 @@ const Calendar = (() => {
       calGrid.appendChild(el);
     });
 
-    const firstDay    = new Date(calYear, calMonth-1, 1).getDay();
+    const firstDay    = new Date(calYear, calMonth - 1, 1).getDay();
     const daysInMonth = new Date(calYear, calMonth, 0).getDate();
 
     for (let i = 0; i < firstDay; i++) {
@@ -54,29 +49,29 @@ const Calendar = (() => {
     for (let d = 1; d <= daysInMonth; d++) {
       const key        = matchKey(calYear, calMonth, d);
       const allMatches = WC2026.dayMap[key] || [];
+      // search by English name so it still works in all languages
       const filtered   = q
         ? allMatches.filter(f =>
-            f.teams.some(t => t.toLowerCase().includes(q)) ||
+            f.teams.some(t => t.toLowerCase().includes(q) || I18n.teamName(t).toLowerCase().includes(q)) ||
             (f.isKO && (f.home.toLowerCase().includes(q) || f.away.toLowerCase().includes(q))))
         : allMatches;
-
-      const el = document.createElement('div');
-      el.className = 'cal-day';
 
       const hasLive = allMatches.some(f => {
         const ld = Live.forFixture(f);
         return ld && (ld.status === 'IN_PLAY' || ld.status === 'PAUSED');
       });
 
-      el.innerHTML = `<span class="day-num">${d}</span>`;
+      const el = document.createElement('div');
+      el.className = 'cal-day';
+      // Day number in local numerals
+      el.innerHTML = `<span class="day-num">${I18n.num(d)}</span>`;
 
       if (allMatches.length > 0) {
         if (filtered.length > 0) {
           el.classList.add('has-match');
           if (hasLive) el.classList.add('has-live');
-          const label = filtered.length === 1
-            ? I18n.t('cal_match',   { n: filtered.length })
-            : I18n.t('cal_matches', { n: filtered.length });
+          const n = filtered.length;
+          const label = n === 1 ? I18n.t('cal_match', { n: I18n.num(n) }) : I18n.t('cal_matches', { n: I18n.num(n) });
           el.innerHTML += `<div class="match-dot${hasLive ? ' dot--live' : ''}"></div>
             <div class="match-count-label">${label}</div>`;
           el.onclick = () => selectDay(key, el);
@@ -99,28 +94,32 @@ const Calendar = (() => {
     document.getElementById('dayResults').scrollIntoView({ behavior:'smooth', block:'nearest' });
   }
 
+  function _dateLabel(key) {
+    const [year, month, day] = key.split('-').map(Number);
+    // Build a UTC date to pass to formatDateLong
+    const d = new Date(Date.UTC(year, month - 1, day));
+    return I18n.formatDateLong(d);
+  }
+
   function renderDayResults() {
     if (!selectedKey) return;
     const q          = getQ();
     const allMatches = WC2026.dayMap[selectedKey] || [];
     const filtered   = q
       ? allMatches.filter(f =>
-          f.teams.some(t => t.toLowerCase().includes(q)) ||
+          f.teams.some(t => t.toLowerCase().includes(q) || I18n.teamName(t).toLowerCase().includes(q)) ||
           (f.isKO && (f.home.toLowerCase().includes(q) || f.away.toLowerCase().includes(q))))
       : allMatches;
 
-    const [year, month, day] = selectedKey.split('-').map(Number);
-    const ms   = I18n.monthsShort();
-    const dateLabel = `${ms[month-1]} ${day}, ${year}`;
-
-    const header    = document.getElementById('dayResultsHeader');
-    const list      = document.getElementById('dayMatchList');
-    const container = document.getElementById('dayResults');
+    const dateLabel  = _dateLabel(selectedKey);
+    const header     = document.getElementById('dayResultsHeader');
+    const list       = document.getElementById('dayMatchList');
+    const container  = document.getElementById('dayResults');
 
     if (filtered.length === 0) {
       const teamMatches = q
         ? WC2026.FIXTURES.filter(f =>
-            f.teams.some(t => t.toLowerCase().includes(q)) ||
+            f.teams.some(t => t.toLowerCase().includes(q) || I18n.teamName(t).toLowerCase().includes(q)) ||
             (f.isKO && (f.home.toLowerCase().includes(q) || f.away.toLowerCase().includes(q))))
         : [];
       header.textContent = I18n.t('cal_no_match', { q, date: dateLabel });
@@ -141,16 +140,20 @@ const Calendar = (() => {
     const ld    = Live.forFixture(f);
     const score = Live.scoreLabel(f);
     const badge = Live.statusBadge(f);
+    const dHome = f.displayHome || f.home;
+    const dAway = f.displayAway || f.away;
+    const dGroup = f.displayGroup || f.group;
+
     const scoreOrVs = score
-      ? `<span class="match-score ${ld && ld.status==='IN_PLAY' ? 'score--live' : ''}">${score}</span>`
+      ? `<span class="match-score ${ld && ld.status==='IN_PLAY' ? 'score--live':''}">${score}</span>`
       : `<span class="day-match-vs-sep">${I18n.t('vs')}</span>`;
     const stageTag = f.isKO
       ? `<div class="day-match-group">${f.label}</div>`
-      : `<div class="day-match-group">${I18n.t('group_prefix')} ${f.group}</div>`;
+      : `<div class="day-match-group">${I18n.t('group_prefix')} ${dGroup}</div>`;
     return `
       <div class="day-match-card">
         <div class="day-match-teams">
-          <span class="hl">${f.home}</span> ${scoreOrVs} ${f.away} ${badge}
+          <span class="hl">${dHome}</span> ${scoreOrVs} ${dAway} ${badge}
         </div>
         <div class="day-match-meta">
           <div class="day-match-time">${f.tzTime}</div>
@@ -160,15 +163,8 @@ const Calendar = (() => {
       </div>`;
   }
 
-  function onSearchChange() {
-    render();
-    if (selectedKey) renderDayResults();
-  }
-
-  function refreshLive() {
-    render();
-    if (selectedKey) renderDayResults();
-  }
+  function onSearchChange() { render(); if (selectedKey) renderDayResults(); }
+  function refreshLive()    { render(); if (selectedKey) renderDayResults(); }
 
   return { shiftMonth, render, onSearchChange, refreshLive };
 })();

@@ -1,6 +1,3 @@
-/**
- * bracket.js — Knockout bracket (i18n-aware)
- */
 'use strict';
 
 const Bracket = (() => {
@@ -8,17 +5,10 @@ const Bracket = (() => {
   const STAGE_ICON  = { r32:'⚽', r16:'🎯', qf:'⚡', sf:'🔥', '3rd':'🥉', final:'🏆' };
   const STAGE_I18N  = { r32:'bracket_label_r32', r16:'bracket_label_r16', qf:'bracket_label_qf', sf:'bracket_label_sf', '3rd':'bracket_label_3rd', final:'bracket_label_final' };
 
-  function displayName(raw) {
-    if (!raw.match(/\b(W|L)\d{2,3}\b/) &&
-        !raw.match(/\b(Winner|Loser|Best)\b/i) &&
-        !raw.match(/\b(1st|2nd|3rd)\b/)) return raw;
-    return raw
-      .replace('Best 3rd','Best 3rd 🔀')
-      .replace(/Winner R32 Match (\d+)/i,'Winner M$1')
-      .replace(/Winner R16 Match (\d+)/i,'Winner M$1')
-      .replace(/Winner QF Match (\d+)/i, 'Winner M$1')
-      .replace(/Loser SF Match (\d+)/i,  'Loser M$1')
-      .replace(/Winner SF Match (\d+)/i, 'Winner M$1');
+  // For KO placeholder strings like "1st Group A" — translate the group letter
+  function translatePlaceholder(raw) {
+    if (!raw) return raw;
+    return raw.replace(/\b([A-L])\b/g, letter => I18n.groupLetter(letter));
   }
 
   function render() {
@@ -59,6 +49,14 @@ const Bracket = (() => {
         const score = Live.scoreLabel(f);
         const badge = Live.statusBadge(f);
 
+        // Group stage: use translated name; KO placeholders: translate group letters within
+        const dHome = f.stage === 'group'
+          ? (f.displayHome || f.home)
+          : translatePlaceholder(f.home);
+        const dAway = f.stage === 'group'
+          ? (f.displayAway || f.away)
+          : translatePlaceholder(f.away);
+
         const scoreOrVs = score
           ? `<span class="bracket-score ${ld && ld.status==='IN_PLAY' ? 'score--live':''}">${score}</span>`
           : `<span class="bracket-vs">${I18n.t('vs')}</span>`;
@@ -68,9 +66,9 @@ const Bracket = (() => {
         card.innerHTML = `
           <div class="bracket-date">${f.tzDate} · ${f.tzTime} · ${f.venue}</div>
           <div class="bracket-matchup">
-            <span class="bracket-team" title="${f.home}">${displayName(f.home)}</span>
+            <span class="bracket-team" title="${f.home}">${dHome}</span>
             ${scoreOrVs}
-            <span class="bracket-team bracket-team--away" title="${f.away}">${displayName(f.away)}</span>
+            <span class="bracket-team bracket-team--away" title="${f.away}">${dAway}</span>
             ${badge}
           </div>`;
         grid.appendChild(card);
@@ -82,6 +80,5 @@ const Bracket = (() => {
   }
 
   function refreshLive() { render(); }
-
   return { render, refreshLive };
 })();
