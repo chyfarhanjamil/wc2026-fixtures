@@ -6,7 +6,7 @@
 'use strict';
 
 const Live = (() => {
-  const API_KEY  = '';   // ← paste your key here
+  const API_KEY  = '72f45df7ce7b4991ac9ebd929bf4c53d';   // ← paste your key here
   const COMP_ID  = 2000;
   const SEASON   = 2026;
   const POLL_MS  = 60000;
@@ -90,6 +90,12 @@ const Live = (() => {
           player: g.scorer?.name || 'Own Goal',
           minute: g.minute,
           type:   g.type || 'REGULAR',
+        })),
+        bookings:  (m.bookings||[]).map(b => ({
+          team:   canon(b.team?.name || ''),
+          player: b.player?.name || '?',
+          minute: b.minute,
+          card:   b.card || 'YELLOW_CARD',
         })),
         homeApi: m.homeTeam?.name || '',
         awayApi: m.awayTeam?.name || '',
