@@ -12,7 +12,7 @@
 <body>
 
 <!-- ── Live data banner ──────────────────────────────────────────────────── -->
-<div id="liveBanner" class="live-banner live-banner--static"></div>
+<div id="liveBanner" class="live-banner live-banner--static" style="display:none"></div>
 
 <!-- ── Header ───────────────────────────────────────────────────────────── -->
 <header>
@@ -58,7 +58,6 @@
     <button class="mode-btn" id="modeTime"     onclick="App.setMode('time')"><span class="icon">🕐</span> By Time</button>
     <button class="mode-btn" id="modeCalendar" onclick="App.setMode('calendar')"><span class="icon">📅</span> Calendar</button>
     <button class="mode-btn" id="modeBracket"  onclick="App.setMode('bracket')"><span class="icon">🏆</span> Knockout</button>
-    <button class="mode-btn" id="modeStats"   onclick="App.setMode('stats')"><span class="icon">📊</span> Stats</button>
   </div>
 
   <div class="filter-panel" id="groupPanel">
@@ -88,11 +87,6 @@
 <!-- ── Knockout + Standings ──────────────────────────────────────────────── -->
 <div id="bracketSection" class="section-wrap" style="display:none;">
   <div id="bracketContent"></div>
-</div>
-
-<!-- ── Stats section ────────────────────────────────────────────────────── -->
-<div id="statsSection" class="section-wrap" style="display:none;">
-  <div id="statsContent"></div>
 </div>
 
 <!-- ── Export bar ───────────────────────────────────────────────────────── -->
@@ -131,7 +125,6 @@
 <script src="js/calendar.js"></script>
 <script src="js/bracket.js"></script>
 <script src="js/export.js"></script>
-<script src="js/stats.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

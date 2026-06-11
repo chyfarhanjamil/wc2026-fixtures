@@ -40,17 +40,10 @@ const Live = (() => {
     return r.json();
   }
 
-  // Top scorers leaderboard — available on free tier
-  let topScorers = [];   // [{ player:{name,nationality}, team:{name}, goals, assists, penalties }]
-
   async function fetchAll() {
     try {
-      const [matchData, scorerData] = await Promise.allSettled([
-        apiFetch(`/competitions/${COMP_ID}/matches?season=${SEASON}`),
-        apiFetch(`/competitions/${COMP_ID}/scorers?season=${SEASON}&limit=100`),
-      ]);
-      if (matchData.status  === 'fulfilled') ingest(matchData.value.matches || []);
-      if (scorerData.status === 'fulfilled') ingestScorers(scorerData.value.scorers || []);
+      const data = await apiFetch(`/competitions/${COMP_ID}/matches?season=${SEASON}`);
+      ingest(data.matches || []);
       notify();
     } catch(e) { console.warn('[Live] fetchAll:', e.message); }
   }
@@ -91,12 +84,6 @@ const Live = (() => {
           minute: g.minute,
           type:   g.type || 'REGULAR',
         })),
-        bookings:  (m.bookings||[]).map(b => ({
-          team:   canon(b.team?.name || ''),
-          player: b.player?.name || '?',
-          minute: b.minute,
-          card:   b.card || 'YELLOW_CARD',
-        })),
         homeApi: m.homeTeam?.name || '',
         awayApi: m.awayTeam?.name || '',
       };
@@ -111,19 +98,6 @@ const Live = (() => {
         }
       });
     });
-  }
-
-  // Ingest the /scorers response into a clean leaderboard
-  function ingestScorers(scorers) {
-    topScorers = scorers.map(s => ({
-      name:        s.player?.name        || '?',
-      nationality: s.player?.nationality || '',
-      teamRaw:     s.team?.name          || '',
-      goals:       s.goals               || 0,
-      assists:     s.assists             || 0,
-      penalties:   s.penalties           || 0,
-      playedMatches: s.playedMatches     || 0,
-    }));
   }
 
   function notify() { listeners.forEach(fn => { try { fn(liveData); } catch(e){} }); }
@@ -173,5 +147,5 @@ const Live = (() => {
     if (type === 'live') setTimeout(() => el.classList.add('live-banner--hidden'), 6000);
   }
 
-  return { init, onUpdate, forFixture, scoreLabel, statusBadge, scorersHtml, hasKey, getTopScorers: () => topScorers };
+  return { init, onUpdate, forFixture, scoreLabel, statusBadge, scorersHtml, hasKey };
 })();

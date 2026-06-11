@@ -84,8 +84,24 @@ const I18n = (() => {
     ar: ['أحد','اثنين','ثلاثاء','أربعاء','خميس','جمعة','سبت'],
   };
 
-  /* ── Group letter — always stays A–L in every language (universal standard) */
-  function groupLetter(letter) { return letter; }
+  /* ── Group letter translation ───────────────────────────────────────────── */
+  // Bengali/Hindi/Arabic use their own letters or numerals for groups
+  const GROUP_LETTERS = {
+    en: { A:'A',B:'B',C:'C',D:'D',E:'E',F:'F',G:'G',H:'H',I:'I',J:'J',K:'K',L:'L' },
+    bn: { A:'ক',B:'খ',C:'গ',D:'ঘ',E:'ঙ',F:'চ',G:'ছ',H:'জ',I:'ঝ',J:'ঞ',K:'ট',L:'ঠ' },
+    hi: { A:'अ',B:'ब',C:'स',D:'द',E:'ए',F:'फ',G:'ग',H:'ह',I:'इ',J:'ज',K:'क',L:'ल' },
+    fr: { A:'A',B:'B',C:'C',D:'D',E:'E',F:'F',G:'G',H:'H',I:'I',J:'J',K:'K',L:'L' },
+    de: { A:'A',B:'B',C:'C',D:'D',E:'E',F:'F',G:'G',H:'H',I:'I',J:'J',K:'K',L:'L' },
+    es: { A:'A',B:'B',C:'C',D:'D',E:'E',F:'F',G:'G',H:'H',I:'I',J:'J',K:'K',L:'L' },
+    pt: { A:'A',B:'B',C:'C',D:'D',E:'E',F:'F',G:'G',H:'H',I:'I',J:'J',K:'K',L:'L' },
+    ar: { A:'أ',B:'ب',C:'ج',D:'د',E:'هـ',F:'و',G:'ز',H:'ح',I:'ط',J:'ي',K:'ك',L:'ل' },
+  };
+
+  // Convert a group letter (A–L) to the current language
+  function groupLetter(letter) {
+    const map = GROUP_LETTERS[_lang] || GROUP_LETTERS.en;
+    return map[letter] || letter;
+  }
 
   /* ── Team name translations ─────────────────────────────────────────────── */
   const TEAM_NAMES = {
@@ -296,43 +312,6 @@ const I18n = (() => {
     ics_note_iphone:    { en:'<strong>iPhone:</strong> Open the .ics file → tap "Add All" → appears in Calendar app.', bn:'<strong>আইফোন:</strong> .ics ফাইল খুলুন → "Add All" চাপুন।', hi:'<strong>iPhone:</strong> .ics खोलें → "Add All" टैप करें।', fr:'<strong>iPhone :</strong> Ouvrez le .ics → «Tout ajouter».', de:'<strong>iPhone:</strong> .ics öffnen → „Alle hinzufügen".', es:'<strong>iPhone:</strong> Abra el .ics → "Agregar todo".', pt:'<strong>iPhone:</strong> Abra o .ics → "Adicionar tudo".', ar:'<strong>iPhone:</strong> افتح .ics → "إضافة الكل".' },
     ics_note_google:    { en:'<strong>Google:</strong> calendar.google.com → Settings → Import → upload file.', bn:'<strong>গুগল:</strong> calendar.google.com → সেটিংস → ইমপোর্ট।', hi:'<strong>Google:</strong> calendar.google.com → Settings → Import.', fr:'<strong>Google :</strong> calendar.google.com → Paramètres → Importer.', de:'<strong>Google:</strong> calendar.google.com → Einstellungen → Importieren.', es:'<strong>Google:</strong> calendar.google.com → Ajustes → Importar.', pt:'<strong>Google:</strong> calendar.google.com → Configurações → Importar.', ar:'<strong>Google:</strong> calendar.google.com → الإعدادات → استيراد.' },
 
-
-    /* ── Stats page ─────────────────────────────────────────────────────── */
-    mode_stats:         { en:'Stats',            bn:'পরিসংখ্যান',   hi:'आँकड़े',       fr:'Stats',        de:'Statistik',    es:'Estadísticas', pt:'Estatísticas', ar:'إحصائيات' },
-    stats_title:        { en:'Player Statistics',bn:'খেলোয়াড় পরিসংখ্যান',hi:'खिलाड़ी आँकड़े',fr:'Statistiques des joueurs',de:'Spielerstatistiken',es:'Estadísticas de jugadores',pt:'Estatísticas dos jogadores',ar:'إحصائيات اللاعبين' },
-    stats_search:       { en:'Search player or team…',bn:'খেলোয়াড় বা দল খুঁজুন…',hi:'खिलाड़ी या टीम खोजें…',fr:'Rechercher un joueur ou équipe…',de:'Spieler oder Team suchen…',es:'Buscar jugador o equipo…',pt:'Buscar jogador ou equipe…',ar:'ابحث عن لاعب أو فريق…' },
-    stats_tab_goals:    { en:'Goals',            bn:'গোল',          hi:'गोल',          fr:'Buts',         de:'Tore',         es:'Goles',        pt:'Gols',         ar:'أهداف' },
-    stats_tab_assists:  { en:'Assists',          bn:'অ্যাসিস্ট',   hi:'असिस्ट',       fr:'Passes décisives',de:'Vorlagen',   es:'Asistencias',  pt:'Assistências', ar:'تمريرات حاسمة' },
-    stats_tab_gk:       { en:'Goalkeepers',      bn:'গোলকিপার',    hi:'गोलकीपर',      fr:'Gardiens',     de:'Torhüter',     es:'Porteros',     pt:'Goleiros',     ar:'حراس المرمى' },
-    stats_tab_cards:    { en:'Cards',            bn:'কার্ড',        hi:'कार्ड',         fr:'Cartons',      de:'Karten',       es:'Tarjetas',     pt:'Cartões',      ar:'بطاقات' },
-    stats_tab_teams:    { en:'Teams',            bn:'দল',          hi:'टीम',           fr:'Équipes',      de:'Teams',        es:'Equipos',      pt:'Equipes',      ar:'فرق' },
-    stats_goals:        { en:'G',               bn:'গো',          hi:'गो',            fr:'B',            de:'T',            es:'G',            pt:'G',            ar:'أه' },
-    stats_assists:      { en:'A',               bn:'অ্যা',        hi:'अस',            fr:'PD',           de:'V',            es:'As',           pt:'As',           ar:'تم' },
-    stats_matches:      { en:'MP',              bn:'ম্যাচ',       hi:'मैच',           fr:'MJ',           de:'Sp',           es:'PJ',           pt:'PJ',           ar:'م' },
-    stats_goals_long:   { en:'Goals',           bn:'গোল',         hi:'गोल',           fr:'Buts',         de:'Tore',         es:'Goles',        pt:'Gols',         ar:'أهداف' },
-    stats_assists_long: { en:'Assists',         bn:'অ্যাসিস্ট',  hi:'असिस्ट',        fr:'Passes',       de:'Vorlagen',     es:'Asistencias',  pt:'Assistências', ar:'تمريرات' },
-    stats_pens:         { en:'Pens',            bn:'পেনাল্টি',    hi:'पेनल्टी',       fr:'Pen.',          de:'Elf.',         es:'Pen.',         pt:'Pen.',         ar:'ركلات' },
-    stats_og:           { en:'OG',              bn:'আত্মঘাতী',   hi:'OG',            fr:'CSC',          de:'ET',           es:'PP',           pt:'CG',           ar:'أه.ذاتية' },
-    stats_clean_sheets: { en:'Clean Sheets',    bn:'ক্লিন শিট',  hi:'क्लीन शीट',     fr:'Clean Sheets', de:'Zu-Null',      es:'Portería a cero',pt:'Jogos sem gol',ar:'شباك نظيفة' },
-    stats_saves:        { en:'Saves',           bn:'সেভ',         hi:'सेव',           fr:'Arrêts',       de:'Paraden',      es:'Paradas',      pt:'Defesas',      ar:'تصديات' },
-    stats_save_pct:     { en:'Save %',          bn:'সেভ %',       hi:'सेव %',         fr:'% Arrêts',     de:'Parade %',     es:'% Paradas',    pt:'% Defesas',    ar:'% التصديات' },
-    stats_yellow:       { en:'Yellow',          bn:'হলুদ',        hi:'पीला',          fr:'Jaunes',       de:'Gelb',         es:'Amarillas',    pt:'Amarelos',     ar:'صفراء' },
-    stats_red:          { en:'Red',             bn:'লাল',         hi:'लाल',           fr:'Rouges',       de:'Rot',          es:'Rojas',        pt:'Vermelhos',    ar:'حمراء' },
-    stats_team_goals:   { en:'Goals For',       bn:'গোল করেছে',  hi:'किए गोल',       fr:'Buts pour',    de:'Tore',         es:'Goles a favor',pt:'Gols marcados',ar:'أهداف مسجلة' },
-    stats_team_ga:      { en:'Goals Against',   bn:'গোল খেয়েছে', hi:'खाए गोल',      fr:'Buts contre',  de:'Gegentore',    es:'Goles en contra',pt:'Gols sofridos',ar:'أهداف مستقبلة' },
-    stats_team_gd:      { en:'Goal Diff',       bn:'গোল পার্থক্য',hi:'गोल अंतर',    fr:'Diff.',         de:'Tordiff.',     es:'Diferencia',   pt:'Saldo',        ar:'فارق الأهداف' },
-    stats_possession:   { en:'Possession',      bn:'বল দখল',      hi:'गेंद नियंत्रण', fr:'Possession',  de:'Ballbesitz',   es:'Posesión',     pt:'Posse de bola',ar:'حيازة الكرة' },
-    stats_top_scorer:   { en:'Top Scorer',      bn:'শীর্ষ গোলদাতা',hi:'शीर्ष स्कोरर',fr:'Meilleur buteur',de:'Torschützenkönig',es:'Máximo goleador',pt:'Artilheiro',ar:'هداف البطولة' },
-    stats_show_more:    { en:'Show more',        bn:'আরো দেখুন',  hi:'और देखें',      fr:'Voir plus',    de:'Mehr zeigen',  es:'Ver más',      pt:'Ver mais',     ar:'عرض المزيد' },
-    stats_show_less:    { en:'Show less',        bn:'কম দেখুন',   hi:'कम देखें',      fr:'Voir moins',   de:'Weniger',      es:'Ver menos',    pt:'Ver menos',    ar:'عرض أقل' },
-    stats_no_data:      { en:'No data yet — stats update once matches are played.',bn:'এখনো তথ্য নেই।',hi:'डेटा नहीं।',fr:'Pas encore de données.',de:'Noch keine Daten.',es:'Sin datos aún.',pt:'Sem dados ainda.',ar:'لا بيانات بعد.' },
-    stats_filter_all:   { en:'All Teams',        bn:'সব দল',      hi:'सभी टीम',       fr:'Toutes équipes',de:'Alle Teams',  es:'Todos los equipos',pt:'Todas equipes',ar:'جميع الفرق' },
-    stats_rank:         { en:'#',               bn:'#',           hi:'#',             fr:'#',            de:'#',            es:'#',            pt:'#',            ar:'#' },
-    stats_player:       { en:'Player',          bn:'খেলোয়াড়',  hi:'खिलाड़ी',       fr:'Joueur',       de:'Spieler',      es:'Jugador',      pt:'Jogador',      ar:'لاعب' },
-    stats_team:         { en:'Team',            bn:'দল',          hi:'टीम',           fr:'Équipe',       de:'Team',         es:'Equipo',       pt:'Equipe',       ar:'فريق' },
-    stats_nation:       { en:'Nation',          bn:'দেশ',         hi:'देश',           fr:'Nation',       de:'Nation',       es:'Nación',       pt:'Nação',        ar:'بلد' },
-    stats_cs:           { en:'CS',              bn:'ক্লিন',       hi:'CS',            fr:'CS',           de:'ZN',           es:'PPC',          pt:'SPG',          ar:'شبكة' },
-    stats_live_note:    { en:'Stats update live as matches are played. Add your API key in js/live.js for real data.',bn:'ম্যাচ অনুযায়ী আপডেট হয়।',hi:'मैच के साथ अपडेट।',fr:'Mis à jour en direct.',de:'Wird live aktualisiert.',es:'Se actualiza en vivo.',pt:'Atualiza ao vivo.',ar:'يُحدَّث مباشرة.' },
     live_badge:{ en:'LIVE', bn:'লাইভ', hi:'लाइव', fr:'EN DIRECT', de:'LIVE', es:'EN VIVO', pt:'AO VIVO', ar:'مباشر' },
     live_ht:   { en:'HT',   bn:'বিরতি',hi:'HT',   fr:'MT',        de:'HZ',   es:'ET',      pt:'INT',     ar:'استراحة'},
     live_ft:   { en:'FT',   bn:'সমাপ্ত',hi:'FT',  fr:'FT',        de:'ET',   es:'FT',      pt:'FT',      ar:'انتهت'  },
