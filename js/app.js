@@ -10,7 +10,7 @@ const App = (() => {
 
   function init() {
     I18n.init();
-    I18n.buildSwitcher('langSwitcherWrap');
+    I18n.buildDropdown('langSelect');
 
     // Group chips
     const groupPanel = document.getElementById('groupPanel');
@@ -108,8 +108,17 @@ const App = (() => {
     const search = document.getElementById('search');
     if (search) search.placeholder = I18n.t('search_placeholder');
 
-    const tzLabelEl = document.querySelector('.tz-label span');
-    if (tzLabelEl) tzLabelEl.textContent = I18n.t('tz_label');
+    // Update timezone label
+    const tzLabel = document.getElementById('tzLabelText');
+    if (tzLabel) tzLabel.textContent = I18n.t('tz_label');
+
+    // Update language label
+    const langLabel = document.getElementById('langLabelText');
+    if (langLabel) langLabel.textContent = I18n.t('lang_label');
+
+    // Keep the lang <select> in sync with current language
+    const langSel = document.getElementById('langSelect');
+    if (langSel) langSel.value = I18n.getLang();
   }
 
   function _buildTzSelector() {

@@ -28,14 +28,14 @@ const Standings = (() => {
   }
 
   function renderTable(groupLetter) {
-    const rows       = calcGroup(groupLetter);
-    const allFix     = WC2026.FIXTURES.filter(f => f.stage==='group' && f.group===groupLetter);
-    const played     = allFix.filter(f => {
+    const rows      = calcGroup(groupLetter);
+    const allFix    = WC2026.FIXTURES.filter(f => f.stage==='group' && f.group===groupLetter);
+    const played    = allFix.filter(f => {
       const ld = Live.forFixture(f);
       return ld && ld.scoreHome!==null && ld.status!=='SCHEDULED' && ld.status!=='TIMED';
     }).length;
-    const rankIcon   = ['🥇','🥈','🥉',''];
-    const dispGroup  = I18n.groupLetter(groupLetter);
+    const rankIcon  = ['🥇','🥈','🥉',''];
+    const dispGroup = I18n.groupLetter(groupLetter);
 
     let html = `
       <div class="standings-table-wrap">
@@ -52,8 +52,7 @@ const Standings = (() => {
               <th title="${I18n.t('standings_col_w')}">${I18n.t('standings_col_w')}</th>
               <th title="${I18n.t('standings_col_d')}">${I18n.t('standings_col_d')}</th>
               <th title="${I18n.t('standings_col_l')}">${I18n.t('standings_col_l')}</th>
-              <th>GF</th>
-              <th>GA</th>
+              <th>GF</th><th>GA</th>
               <th title="${I18n.t('standings_col_gd')}">${I18n.t('standings_col_gd')}</th>
               <th title="${I18n.t('standings_col_pts')}">${I18n.t('standings_col_pts')}</th>
             </tr>
@@ -61,12 +60,12 @@ const Standings = (() => {
           <tbody>`;
 
     rows.forEach((r, i) => {
-      const flag    = WC2026.FLAGS[r.team] || '🏳️';
-      const pos     = i + 1;
-      const qual    = pos <= 2 ? 'standing-qual' : pos === 3 ? 'standing-third' : '';
-      const icon    = rankIcon[i] || '';
+      const flag     = WC2026.FLAGS[r.team] || '🏳️';
+      const pos      = i + 1;
+      const qual     = pos <= 2 ? 'standing-qual' : pos === 3 ? 'standing-third' : '';
+      const icon     = rankIcon[i] || '';
       const dispName = I18n.teamName(r.team);
-      const gd = r.gd > 0 ? `+${I18n.num(r.gd)}` : I18n.num(r.gd);
+      const gd       = r.gd > 0 ? `+${I18n.num(r.gd)}` : I18n.num(r.gd);
       html += `
             <tr class="standing-row ${qual}">
               <td class="col-pos">${icon || I18n.num(pos)}</td>
@@ -86,15 +85,13 @@ const Standings = (() => {
     return html;
   }
 
+  // renderAll no longer needed (bracket builds it section by section), kept for compat
   function renderAll(containerId) {
     const el = document.getElementById(containerId);
     if (!el) return;
-    let html = `<div class="standings-header">
-      <h2 class="standings-title">${I18n.t('standings_title')}</h2>
-    </div>
-    <div class="standings-grid">`;
+    let html = '<div class="standings-grid">';
     WC2026.groups.forEach(g => { html += renderTable(g); });
-    html += `</div>`;
+    html += '</div>';
     el.innerHTML = html;
   }
 

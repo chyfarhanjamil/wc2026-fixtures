@@ -137,28 +137,52 @@ const Calendar = (() => {
   }
 
   function matchCard(f) {
-    const ld    = Live.forFixture(f);
-    const score = Live.scoreLabel(f);
-    const badge = Live.statusBadge(f);
-    const dHome = f.displayHome || f.home;
-    const dAway = f.displayAway || f.away;
+    const ld     = Live.forFixture(f);
+    const score  = Live.scoreLabel(f);
+    const badge  = Live.statusBadge(f);
     const dGroup = f.displayGroup || f.group;
+
+    // For group stage use translated names; for KO translate the placeholder group letters
+    const dHome = f.isKO
+      ? f.home.replace(/\b([A-L])\b/g, l => I18n.groupLetter(l))
+      : (f.displayHome || f.home);
+    const dAway = f.isKO
+      ? f.away.replace(/\b([A-L])\b/g, l => I18n.groupLetter(l))
+      : (f.displayAway || f.away);
 
     const scoreOrVs = score
       ? `<span class="match-score ${ld && ld.status==='IN_PLAY' ? 'score--live':''}">${score}</span>`
       : `<span class="day-match-vs-sep">${I18n.t('vs')}</span>`;
-    const stageTag = f.isKO
-      ? `<div class="day-match-group">${f.label}</div>`
-      : `<div class="day-match-group">${I18n.t('group_prefix')} ${dGroup}</div>`;
+
+    const stagePill = f.isKO
+      ? `<span class="day-stage-pill day-stage-pill--ko">${f.label}</span>`
+      : `<span class="day-stage-pill">${I18n.t('group_prefix')} ${dGroup}</span>`;
+
+    // For KO fixtures that haven't been played yet, show a friendly hint
+    const koHint = (f.isKO && !score && f.homeDesc && f.awayDesc)
+      ? `<div class="day-ko-hint">
+           <div class="day-ko-team-hint"><strong>${dHome}</strong><br><span>${f.homeDesc.replace(/\n/g,' · ')}</span></div>
+           <div class="day-ko-team-hint"><strong>${dAway}</strong><br><span>${f.awayDesc.replace(/\n/g,' · ')}</span></div>
+         </div>`
+      : '';
+
     return `
-      <div class="day-match-card">
-        <div class="day-match-teams">
-          <span class="hl">${dHome}</span> ${scoreOrVs} ${dAway} ${badge}
+      <div class="day-match-card${f.stage==='final' ? ' day-match-card--final' : ''}">
+        <div class="day-match-header">
+          ${stagePill}
+          <span class="day-match-venue-inline">${f.venue}</span>
         </div>
-        <div class="day-match-meta">
-          <div class="day-match-time">${f.tzTime}</div>
-          ${stageTag}
-          <div class="day-match-venue">${f.venue}</div>
+        <div class="day-match-teams">
+          <span class="hl">${dHome}</span>
+          <span class="day-match-center">
+            ${scoreOrVs}
+            ${badge}
+          </span>
+          <span class="hl hl-right">${dAway}</span>
+        </div>
+        ${koHint}
+        <div class="day-match-foot">
+          <span class="day-match-time-pill">${f.tzTime}</span>
         </div>
       </div>`;
   }

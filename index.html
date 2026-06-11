@@ -22,8 +22,6 @@
 </header>
 
 <!-- ── Language Switcher ────────────────────────────────────────────────── -->
-<div id="langSwitcherWrap" class="lang-switcher-outer"></div>
-
 <!-- ── Controls ─────────────────────────────────────────────────────────── -->
 <div class="controls">
   <div class="controls-top-row">
@@ -39,9 +37,18 @@
           <circle cx="12" cy="12" r="10"/>
           <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
         </svg>
-        <span>Timezone</span>
+        <span id="tzLabelText">Timezone</span>
       </label>
       <select id="tzSelect" class="tz-select"></select>
+    </div>
+    <div class="tz-selector-wrap" id="langSelectorWrap">
+      <label class="tz-label" for="langSelect">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M5 8l6 6M4 14l6-6 2-3M2 5h12M7 2h1M22 22l-5-10-5 10M14 18h6"/>
+        </svg>
+        <span id="langLabelText">Language</span>
+      </label>
+      <select id="langSelect" class="tz-select"></select>
     </div>
   </div>
 

@@ -361,26 +361,22 @@ const I18n = (() => {
     });
   }
 
-  /* ── Build language switcher ─────────────────────────────────────────── */
-  function buildSwitcher(containerId) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-    const wrap = document.createElement('div');
-    wrap.className = 'lang-switcher';
+  /* ── Build language dropdown (matches timezone selector style) ────────── */
+  function buildSwitcher(unusedId) {
+    // No-op: language is now a <select> built in buildDropdown(), called by App.init()
+  }
+
+  function buildDropdown(selectId) {
+    const sel = document.getElementById(selectId);
+    if (!sel) return;
     LANGUAGES.forEach(lang => {
-      const btn = document.createElement('button');
-      btn.className = 'lang-btn' + (lang.id === _lang ? ' active' : '');
-      btn.dataset.langId = lang.id;
-      btn.title = lang.label;
-      btn.innerHTML = `<span class="lang-flag">${lang.flag}</span><span class="lang-name">${lang.nativeLabel}</span>`;
-      btn.onclick = () => {
-        document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        setLang(lang.id);
-      };
-      wrap.appendChild(btn);
+      const opt = document.createElement('option');
+      opt.value = lang.id;
+      opt.textContent = lang.flag + '  ' + lang.nativeLabel;
+      if (lang.id === _lang) opt.selected = true;
+      sel.appendChild(opt);
     });
-    container.appendChild(wrap);
+    sel.onchange = () => setLang(sel.value);
   }
 
   /* ── Init ────────────────────────────────────────────────────────────── */
@@ -394,6 +390,6 @@ const I18n = (() => {
     t, num, teamName, groupLetter, convertNumerals,
     formatTime, formatDate, formatDateLong, formatCalendarHeading,
     days, months, monthsShort, timeSlots, slotLabel,
-    setLang, getLang, getDir, buildSwitcher, init, LANGUAGES
+    setLang, getLang, getDir, buildSwitcher, buildDropdown, init, LANGUAGES
   };
 })();
