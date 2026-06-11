@@ -6,7 +6,7 @@
 'use strict';
 
 const Live = (() => {
-  const API_KEY  = '';   // ← paste your key here
+  const API_KEY  = '72f45df7ce7b4991ac9ebd929bf4c53d';   // ← paste your key here
   const COMP_ID  = 2000;
   const SEASON   = 2026;
   const POLL_MS  = 60000;

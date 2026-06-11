@@ -86,13 +86,15 @@ header p {
 /* top row: search + timezone side by side */
 .controls-top-row {
   display: flex;
-  gap: 12px;
-  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: stretch;
 }
 
 .search-wrap {
   position: relative;
-  flex: 1;
+  flex: 1 1 200px;
+  min-width: 0;
 }
 
 .search-wrap input {
@@ -125,9 +127,9 @@ header p {
   border: 1px solid var(--card-border);
   border-radius: 12px;
   padding: 10px 14px;
-  flex-shrink: 0;
+  flex: 1 1 140px;
+  min-width: 0;
   transition: border-color .2s;
-  white-space: nowrap;
 }
 
 .tz-selector-wrap:focus-within {
@@ -144,7 +146,7 @@ header p {
   letter-spacing: .5px;
   text-transform: uppercase;
   cursor: default;
-  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .tz-label svg { flex-shrink: 0; color: var(--gold); }
@@ -158,6 +160,8 @@ header p {
   font-weight: 500;
   outline: none;
   cursor: pointer;
+  min-width: 0;
+  width: 100%;
   max-width: 200px;
   /* Custom arrow */
   appearance: none;
@@ -178,24 +182,30 @@ header p {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 8px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 }
+.mode-bar::-webkit-scrollbar { display: none; }
 
 .mode-btn {
-  padding: 10px 8px;
+  padding: 10px 4px;
   border-radius: 12px;
   border: 1px solid var(--card-border);
   background: var(--card-bg);
   color: var(--muted);
   font-family: 'DM Sans', sans-serif;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
-  letter-spacing: .5px;
+  letter-spacing: .3px;
   transition: all .2s;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4px;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .mode-btn .icon { font-size: 18px; }
@@ -209,10 +219,15 @@ header p {
 /* ── Filter panels ──────────────────────────────────────────────────────── */
 .filter-panel {
   display: none;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 8px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 2px;
   animation: fadeIn .2s ease;
 }
+.filter-panel::-webkit-scrollbar { display: none; }
 
 .filter-chip {
   padding: 7px 14px;
@@ -245,10 +260,10 @@ header p {
 .teams-grid {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 20px 60px;
+  padding: 0 16px 60px;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px,1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
+  gap: 16px;
 }
 
 .team-card {
@@ -321,10 +336,10 @@ header p {
 .match-list { padding: 12px 0; }
 
 .match-row {
-  padding: 10px 20px;
+  padding: 10px 16px;
   display: grid;
-  grid-template-columns: 70px 1fr 70px;
-  gap: 8px;
+  grid-template-columns: minmax(50px,72px) 1fr minmax(50px,72px);
+  gap: 6px;
   align-items: center;
   border-bottom: 1px solid rgba(255,255,255,.04);
   transition: background .15s;
@@ -951,18 +966,146 @@ header p {
 /* ══════════════════════════════════════════════════════════════════
    RESPONSIVE
    ══════════════════════════════════════════════════════════════════ */
-@media (max-width: 600px) {
-  .standings-grid { grid-template-columns: 1fr; }
-  .standings-table th, .standings-table td { padding: 5px 3px; font-size: 10px; }
-  .standing-flag { font-size: 13px; margin-right: 3px; }
-  .ko-match-card { padding: 10px 12px; }
-  .ko-match-teams { gap: 4px; }
-  .ko-team-name  { font-size: 12px; }
-  .ko-score      { font-size: 15px; }
-  .day-match-card { padding: 10px 12px; }
+/* ══════════════════════════════════════════════════════════════════
+   RESPONSIVE — covers iPhone 17 Pro Max (430px) and all mobile
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Tablet / large phone ────────────────────────────────────────────────── */
+@media (max-width: 700px) {
+  /* Header: tighten */
+  header { padding: 32px 16px 24px; }
+  .year-badge { font-size: clamp(60px, 18vw, 90px); }
+
+  /* Controls: full bleed padding */
+  .controls { padding: 0 12px; gap: 10px; margin-bottom: 18px; }
+
+  /* Search + tz/lang wrap into two rows: search full width, selectors side by side */
+  .controls-top-row { flex-wrap: wrap; gap: 8px; }
+  .search-wrap      { flex: 1 1 100%; }          /* full row */
+  .tz-selector-wrap { flex: 1 1 calc(50% - 4px); min-width: 0; }
+
+  /* Calendar section */
+  #calendarSection { padding: 0 12px !important; margin-bottom: 16px !important; }
+  #bracketSection  { padding: 0 12px !important; margin-bottom: 16px !important; }
+
+  /* Team grid */
+  .teams-grid { padding: 0 12px 40px; gap: 12px; }
+}
+
+/* ── Mobile (iPhone Pro Max = 430px and below) ───────────────────────────── */
+@media (max-width: 480px) {
+
+  /* ── Header ── */
+  header { padding: 28px 12px 20px; }
+  header h1 { font-size: clamp(20px, 6vw, 30px); }
+  header p  { font-size: 11px; }
+  .year-badge { opacity: .5; }
+
+  /* ── Controls row ── */
+  .controls { padding: 0 10px; gap: 8px; }
+  .search-wrap input { font-size: 14px; padding: 12px 16px 12px 42px; border-radius: 10px; }
+  .search-wrap svg   { left: 13px; }
+
+  /* Tz + Lang: each takes half width, hide text label, show icon only */
+  .tz-selector-wrap  { padding: 9px 10px; border-radius: 10px; flex: 1 1 calc(50% - 4px); }
+  .tz-label span     { display: none; }          /* hide "Timezone" / "Language" text */
+  .tz-label svg      { width: 16px; height: 16px; }
+  .tz-select         { font-size: 12px; }
+
+  /* ── Mode bar: 5 equal cols, icon only at very small, text below ── */
+  .mode-bar  { gap: 5px; }
+  .mode-btn  { padding: 8px 2px; font-size: 10px; border-radius: 10px; gap: 2px; }
+  .mode-btn .icon { font-size: 16px; }
+
+  /* ── Filter chips: horizontal scroll ── */
+  .filter-panel   { padding-bottom: 4px; }
+  .filter-chip    { padding: 6px 12px; font-size: 11px; flex-shrink: 0; }
+
+  /* ── Team cards ── */
+  .teams-grid    { padding: 0 10px 40px; gap: 10px; }
+  .team-card     { border-radius: 12px; }
+  .card-header   { padding: 12px 14px; gap: 10px; }
+  .flag-circle   { width: 38px; height: 38px; font-size: 18px; }
+  .team-info h2  { font-size: 18px; }
+  .group-label   { font-size: 10px; }
+  .count-badge   { font-size: 10px; padding: 1px 8px; }
+
+  /* ── Match rows inside team cards ── */
+  .match-row      { padding: 9px 14px; gap: 4px; }
+  .match-row > .match-date { font-size: 10px; }
+  .match-row > .match-vs   { font-size: 12px; }
+  .match-row > .match-time { font-size: 10px; }
+
+  /* ── Calendar ── */
+  #calendarSection { padding: 0 10px !important; }
+  .cal-header      { padding: 12px 14px; }
+  .cal-header h3   { font-size: 16px; }
+  .cal-nav         { width: 28px; height: 28px; font-size: 14px; }
+  .cal-day-name    { padding: 8px 2px; font-size: 10px; }
+  .cal-day         { padding: 8px 2px; font-size: 12px; min-height: 44px; }
+  .match-count-label { font-size: 8px; }
+  .match-dot       { width: 4px; height: 4px; }
+
+  /* Day results */
+  .day-results-header { font-size: 15px; }
+  .day-match-card  { padding: 10px 12px; border-radius: 10px; }
+  .day-match-header{ margin-bottom: 6px; }
+  .day-stage-pill  { font-size: 9px; padding: 2px 8px; }
+  .day-match-venue-inline { font-size: 9px; max-width: 100px; }
   .day-match-teams .hl { font-size: 12px; }
-  .day-ko-hint   { grid-template-columns: 1fr; gap: 4px; }
+  .match-score     { font-size: 15px; }
+  .day-match-time-pill { font-size: 10px; padding: 2px 8px; }
+  .day-ko-hint     { grid-template-columns: 1fr; gap: 4px; }
   .day-ko-team-hint:last-child { text-align: left; }
+
+  /* ── Knockout accordion ── */
+  #bracketSection  { padding: 0 10px !important; }
+  .ko-section      { border-radius: 10px; }
+  .ko-header       { padding: 12px 14px; }
+  .ko-title        { font-size: 14px; }
+  .ko-icon         { font-size: 16px; }
+  .ko-count-badge  { font-size: 9px; padding: 1px 7px; display: none; }
+  .ko-match-list   { padding: 0 10px; gap: 6px; }
+  .ko-match-card   { padding: 10px 12px; border-radius: 10px; }
+  .ko-match-meta   { font-size: 9px; margin-bottom: 6px; }
+  .ko-team-name    { font-size: 12px; }
+  .ko-team-hint    { font-size: 9px; }
+  .ko-score        { font-size: 15px; }
+  .ko-vs           { font-size: 10px; }
+  .ko-divider span { font-size: 12px; letter-spacing: 1.5px; }
+
+  /* ── Standings ── */
+  .standings-grid  { grid-template-columns: 1fr; gap: 8px; padding: 4px 10px 10px; }
+  .standings-table-wrap { border-radius: 8px; }
+  .standings-group-title { font-size: 12px; padding: 6px 10px; }
+  .standings-table th,
+  .standings-table td    { padding: 5px 3px; font-size: 10px; }
+  .standing-flag   { font-size: 13px; margin-right: 3px; }
+  .standing-name   { font-size: 10px; }
+
+  /* ── Export modal ── */
+  .modal { padding: 20px 16px; border-radius: 16px; }
+  .modal-title { font-size: 20px; }
+
+  /* ── Live banner ── */
+  .live-banner { font-size: 12px; padding: 8px 12px; }
+}
+
+/* ── Very small phones (360px and below) ──────────────────────────────────── */
+@media (max-width: 360px) {
+  .mode-btn       { font-size: 9px; }
+  .mode-btn .icon { font-size: 14px; }
+  .tz-select      { font-size: 11px; }
+  .team-info h2   { font-size: 16px; }
+  .ko-title       { font-size: 12px; }
+}
+
+
+/* ── Section wrapper (calendar / bracket) ──────────────────────────────── */
+.section-wrap {
+  max-width: 1200px;
+  margin: 0 auto 28px;
+  padding: 0 20px;
 }
 
 /* ── Language Switcher ───────────────────────────────────────────────────── */
