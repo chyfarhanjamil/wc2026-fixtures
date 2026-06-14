@@ -76,7 +76,7 @@ const TeamGrid = (() => {
         ${badge}
       </div>
       <div class="match-time">${f.tzTime}</div>
-      ${scorers ? `<div class="match-scorers-wrap col-span-3">${scorers}</div>` : ''}
+      ${scorers ? `<div class="match-scorers-wrap">${scorers}</div>` : ''}
     </div>`;
   }
 

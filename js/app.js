@@ -58,6 +58,7 @@ const App = (() => {
       TeamGrid.refreshLive();
       if (currentMode === 'calendar') Calendar.refreshLive();
       if (currentMode === 'bracket')  Bracket.refreshLive();
+      if (currentMode === 'stats')    Stats.render();
     });
 
     Live.init();
@@ -81,11 +82,12 @@ const App = (() => {
     TeamGrid.init(true);
     if (currentMode === 'calendar') Calendar.render();
     else if (currentMode === 'bracket') Bracket.render();
+    else if (currentMode === 'stats') Stats.render();
     else TeamGrid.render({ mode: currentMode, activeGroup, activeTimeSlot });
 
     // Mode buttons
-    const modeKeys = ['teams','group','time','calendar','bracket'];
-    const modeI18n = ['mode_teams','mode_group','mode_time','mode_calendar','mode_knockout'];
+    const modeKeys = ['teams','group','time','calendar','bracket','stats'];
+    const modeI18n = ['mode_teams','mode_group','mode_time','mode_calendar','mode_knockout','mode_stats'];
     modeKeys.forEach((m, i) => {
       const btn = document.getElementById(`mode${_cap(m)}`);
       if (btn) {
@@ -144,12 +146,13 @@ const App = (() => {
     TeamGrid.init(true);
     if (currentMode === 'calendar') Calendar.render();
     else if (currentMode === 'bracket') Bracket.render();
+    else if (currentMode === 'stats') Stats.render();
     else TeamGrid.render({ mode: currentMode, activeGroup, activeTimeSlot });
   }
 
   function setMode(mode) {
     currentMode = mode;
-    ['teams','group','time','calendar','bracket'].forEach(m => {
+    ['teams','group','time','calendar','bracket','stats'].forEach(m => {
       const btn = document.getElementById(`mode${_cap(m)}`);
       if (btn) btn.classList.toggle('active', m === mode);
     });
@@ -158,8 +161,9 @@ const App = (() => {
     toggle('calendarSection', mode==='calendar', 'block');
     toggle('exportBar',       mode==='calendar', 'block');
     toggle('bracketSection',  mode==='bracket',  'block');
+    toggle('statsSection',    mode==='stats',    'block');
     document.getElementById('grid').style.display =
-      (mode==='calendar'||mode==='bracket') ? 'none' : 'grid';
+      (mode==='calendar'||mode==='bracket'||mode==='stats') ? 'none' : 'grid';
 
     activeGroup = null; activeTimeSlot = null;
     document.querySelectorAll('#groupPanel .filter-chip').forEach((c,i) => c.classList.toggle('active',i===0));
@@ -167,7 +171,8 @@ const App = (() => {
 
     if (mode === 'calendar') Calendar.render();
     if (mode === 'bracket')  Bracket.render();
-    if (mode !== 'calendar' && mode !== 'bracket')
+    if (mode === 'stats')    Stats.render();
+    if (mode !== 'calendar' && mode !== 'bracket' && mode !== 'stats')
       TeamGrid.render({ mode, activeGroup, activeTimeSlot });
   }
 

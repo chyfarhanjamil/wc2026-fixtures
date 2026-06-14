@@ -1,111 +1,208 @@
 /**
  * live.js — Real-time data from football-data.org
- * Free key: https://www.football-data.org/client/register
- * Paste key in API_KEY below for live scores, results, scorers.
+ * API key is already set below.
+ * Competition 2000 = FIFA World Cup (all editions including 2026)
+ *
+ * FREE TIER gives you:
+ *   ✅ Live scores (IN_PLAY, PAUSED, FINISHED)
+ *   ✅ Full-time & half-time scores
+ *   ✅ Goal scorers (name + minute) via m.goals[]
+ *   ✅ Top scorers leaderboard via /scorers endpoint
+ *   ✅ Assists (in /scorers response)
+ *   ❌ Yellow/Red cards (paid tier only)
+ *   ❌ GK save data (paid tier only)
  */
 'use strict';
 
 const Live = (() => {
-  const API_KEY  = '72f45df7ce7b4991ac9ebd929bf4c53d';   // ← paste your key here
-  const COMP_ID  = 2000;
-  const SEASON   = 2026;
-  const POLL_MS  = 60000;
-  const LIVE_MS  = 30000;
 
-  let liveData   = {};   // keyed by "local_<staticId>"
+  // ── CONFIG ────────────────────────────────────────────────────────────
+  const API_KEY = '72f45df7ce7b4991ac9ebd929bf4c53d';   // football-data.org
+  const COMP_ID = 2000;   // FIFA World Cup (football-data.org ID)
+  const SEASON  = 2026;
+  const POLL_MS  = 60000;  // re-poll every 60s normally
+  const LIVE_MS  = 30000;  // re-poll every 30s when a match is IN_PLAY
+
+  // ── STATE ─────────────────────────────────────────────────────────────
+  let liveData   = {};    // keyed "local_<fixtureId>" → match payload
+  let topScorers = [];    // from /scorers endpoint
   let listeners  = [];
-  let hasKey     = !!API_KEY;
+  const hasKey   = !!API_KEY;
 
-  // ── INIT ─────────────────────────────────────────────────────────────
+  // ── INIT ──────────────────────────────────────────────────────────────
   function init() {
-    if (!hasKey) { setBanner('static'); return; }
-    setBanner('loading');
+    if (!hasKey) { _setBanner('static'); return; }
+    _setBanner('loading');
     fetchAll().then(() => {
-      setBanner(Object.keys(liveData).length ? 'live' : 'error');
+      const gotData = Object.keys(liveData).length > 0;
+      _setBanner(gotData ? 'live' : 'waiting');
+      // Regular poll every 60s
       setInterval(fetchAll, POLL_MS);
+      // Extra fast poll during live matches
       setInterval(() => {
-        const anyLive = Object.values(liveData).some(d =>
-          d.status === 'IN_PLAY' || d.status === 'PAUSED');
+        const anyLive = Object.values(liveData).some(
+          d => d.status === 'IN_PLAY' || d.status === 'PAUSED'
+        );
         if (anyLive) fetchLive();
       }, LIVE_MS);
-    });
+    }).catch(() => _setBanner('error'));
   }
 
-  // ── FETCH ─────────────────────────────────────────────────────────────
-  async function apiFetch(path) {
-    const r = await fetch(`https://api.football-data.org/v4${path}`, {
+  // ── API FETCH ─────────────────────────────────────────────────────────
+  async function _apiFetch(path) {
+    const res = await fetch(`https://api.football-data.org/v4${path}`, {
       headers: { 'X-Auth-Token': API_KEY }
     });
-    if (!r.ok) throw new Error(r.status);
-    return r.json();
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`${res.status} ${text.slice(0,80)}`);
+    }
+    return res.json();
   }
 
+  // Full poll — matches + scorers
   async function fetchAll() {
-    try {
-      const data = await apiFetch(`/competitions/${COMP_ID}/matches?season=${SEASON}`);
-      ingest(data.matches || []);
-      notify();
-    } catch(e) { console.warn('[Live] fetchAll:', e.message); }
+    const [matchRes, scorerRes] = await Promise.allSettled([
+      _apiFetch(`/competitions/${COMP_ID}/matches?season=${SEASON}`),
+      _apiFetch(`/competitions/${COMP_ID}/scorers?season=${SEASON}&limit=100`),
+    ]);
+    if (matchRes.status  === 'fulfilled') _ingestMatches(matchRes.value.matches   || []);
+    if (scorerRes.status === 'fulfilled') _ingestScorers(scorerRes.value.scorers  || []);
+    else console.warn('[Live] scorers:', scorerRes.reason?.message);
+    _notify();
+    return true;
   }
 
+  // Fast poll — only live matches
   async function fetchLive() {
     try {
-      const data = await apiFetch(`/competitions/${COMP_ID}/matches?status=IN_PLAY,PAUSED&season=${SEASON}`);
-      ingest(data.matches || []);
-      notify();
+      const data = await _apiFetch(
+        `/competitions/${COMP_ID}/matches?status=IN_PLAY,PAUSED&season=${SEASON}`
+      );
+      _ingestMatches(data.matches || []);
+      _notify();
     } catch(e) { console.warn('[Live] fetchLive:', e.message); }
   }
 
-  // ── INGEST ────────────────────────────────────────────────────────────
-  function canon(name) {
-    return (name||'').toLowerCase().trim()
-      .replace('türkiye','turkiye').replace('turkey','turkiye')
-      .replace('korea republic','korea republic')
-      .replace('ivory coast','côte d\'ivoire')
-      .replace("côte d'ivoire","côte d'ivoire")
-      .replace('congo dr','congo dr').replace('dr congo','congo dr')
-      .replace('united states','usa');
+  // ── TEAM NAME CANONICALISATION ────────────────────────────────────────
+  // Maps every name variant the API might send → the name used in data.js
+  const CANON_MAP = {
+    // USA
+    'united states':           'usa',
+    'usa':                     'usa',
+    'us':                      'usa',
+    // Korea
+    'korea republic':          'korea republic',
+    'south korea':             'korea republic',
+    'republic of korea':       'korea republic',
+    // Ivory Coast
+    "côte d'ivoire":           'ivory coast',
+    "cote d'ivoire":           'ivory coast',
+    'ivory coast':             'ivory coast',
+    // Bosnia
+    'bosnia and herzegovina':  'bosnia & herzegovina',
+    'bosnia & herzegovina':    'bosnia & herzegovina',
+    // Türkiye
+    'türkiye':                 'türkiye',
+    'turkey':                  'türkiye',
+    // Congo
+    'congo dr':                'congo dr',
+    'dr congo':                'congo dr',
+    'democratic republic of congo': 'congo dr',
+    // Cabo Verde
+    'cape verde':              'cabo verde',
+    'cabo verde':              'cabo verde',
+    // England / Great Britain — API uses "England"
+    'england':                 'england',
+    // Scotland
+    'scotland':                'scotland',
+  };
+
+  function _canon(name) {
+    const n = (name || '').toLowerCase().trim()
+      .replace(/\u00fc/g,'ü').replace(/\u00e4/g,'ä').replace(/\u00f6/g,'ö'); // normalize umlauts
+    return CANON_MAP[n] || n;
   }
 
-  function ingest(matches) {
+  // ── INGEST MATCHES ────────────────────────────────────────────────────
+  function _ingestMatches(matches) {
     matches.forEach(m => {
-      const ft      = m.score?.fullTime || {};
-      const ht      = m.score?.halfTime || {};
+      const ft = m.score?.fullTime  || {};
+      const ht = m.score?.halfTime  || {};
       const payload = {
         status:    m.status,
         scoreHome: ft.home ?? null,
         scoreAway: ft.away ?? null,
         htHome:    ht.home ?? null,
         htAway:    ht.away ?? null,
-        minute:    m.minute || null,
-        scorers:   (m.goals||[]).map(g => ({
-          team:   canon(g.team?.name || ''),
-          player: g.scorer?.name || 'Own Goal',
+        minute:    m.minute  || null,
+        homeApi:   m.homeTeam?.name || '',
+        awayApi:   m.awayTeam?.name || '',
+        // Goal-scorer events — included on free tier
+        scorers: (m.goals || []).map(g => ({
+          team:   _canon(g.team?.name   || ''),
+          player: g.scorer?.name        || 'Own Goal',
           minute: g.minute,
-          type:   g.type || 'REGULAR',
+          type:   g.type                || 'REGULAR',
         })),
-        homeApi: m.homeTeam?.name || '',
-        awayApi: m.awayTeam?.name || '',
       };
 
-      // Match to our static fixtures by canonicalised name
-      const hc = canon(m.homeTeam?.name || '');
-      const ac = canon(m.awayTeam?.name || '');
+      // Match API team names against our static fixture list
+      const hc = _canon(m.homeTeam?.name || '');
+      const ac = _canon(m.awayTeam?.name || '');
       WC2026.FIXTURES.forEach(f => {
-        if (f.stage !== 'group') return; // only group stage has firm names
-        if (canon(f.home) === hc && canon(f.away) === ac) {
+        if (f.stage !== 'group') return;   // KO teams TBD
+        if (_canon(f.home) === hc && _canon(f.away) === ac) {
           liveData[`local_${f.id}`] = payload;
         }
       });
     });
   }
 
-  function notify() { listeners.forEach(fn => { try { fn(liveData); } catch(e){} }); }
+  // ── INGEST SCORERS (top-scorers endpoint) ─────────────────────────────
+  function _ingestScorers(scorers) {
+    topScorers = scorers.map(s => ({
+      name:          s.player?.name         || '?',
+      nationality:   s.player?.nationality  || '',
+      teamRaw:       s.team?.name           || '',
+      goals:         s.goals                || 0,
+      assists:       s.assists              || 0,
+      penalties:     s.penalties            || 0,
+      playedMatches: s.playedMatches        || 0,
+    }));
+  }
 
-  // ── PUBLIC ────────────────────────────────────────────────────────────
+  // ── NOTIFY LISTENERS ─────────────────────────────────────────────────
+  function _notify() {
+    listeners.forEach(fn => { try { fn(liveData); } catch(e) {} });
+  }
+
+  // ── BANNER ────────────────────────────────────────────────────────────
+  function _setBanner(type) {
+    const el = document.getElementById('liveBanner');
+    if (!el) return;
+    const msgs = {
+      static:  '📋 No API key set — showing static fixture data only.',
+      loading: '⏳ Connecting to live data…',
+      waiting: '📅 Connected — live scores will appear once matches kick off (Jun 11).',
+      live:    '🟢 Live data active — scores update every 60 s.',
+      error:   '⚠️ Could not connect to live data. Showing static fixtures.',
+    };
+    el.className  = `live-banner live-banner--${type}`;
+    el.innerHTML  = `<span>${msgs[type]}</span>`;
+    el.style.display = 'block';
+    // Auto-hide the "live" banner after 8 s
+    if (type === 'live' || type === 'waiting') {
+      setTimeout(() => { el.style.display = 'none'; }, 8000);
+    }
+  }
+
+  // ── PUBLIC HELPERS ────────────────────────────────────────────────────
   function onUpdate(fn) { listeners.push(fn); }
 
-  function forFixture(f) { return liveData[`local_${f.id}`] || null; }
+  function forFixture(f) {
+    return liveData[`local_${f.id}`] || null;
+  }
 
   function scoreLabel(f) {
     const d = forFixture(f);
@@ -117,7 +214,7 @@ const Live = (() => {
     const d = forFixture(f);
     if (!d) return '';
     if (d.status === 'IN_PLAY')  return `<span class="badge badge--live">🔴 LIVE${d.minute ? ' ' + d.minute + "'" : ''}</span>`;
-    if (d.status === 'PAUSED')   return `<span class="badge badge--live">⏸ HT</span>`;
+    if (d.status === 'PAUSED')   return `<span class="badge badge--ht">⏸ HT</span>`;
     if (d.status === 'FINISHED') return `<span class="badge badge--ft">FT</span>`;
     return '';
   }
@@ -126,26 +223,17 @@ const Live = (() => {
     const d = forFixture(f);
     if (!d || !d.scorers || !d.scorers.length) return '';
     const items = d.scorers.map(g => {
-      const ico = g.type==='OWN_GOAL' ? '⚽(OG)' : g.type==='PENALTY' ? '⚽(P)' : '⚽';
+      const ico = g.type === 'OWN_GOAL' ? '⚽(OG)' : g.type === 'PENALTY' ? '⚽(P)' : '⚽';
       return `<span class="scorer-item">${ico} ${g.player} <b>${g.minute}'</b></span>`;
     });
-    return `<div class="scorers-row">${items.join('<span class="scorer-sep">·</span>')}</div>`;
+    return `<div class="scorers-row">${items.join('<span class="scorer-sep"> · </span>')}</div>`;
   }
 
-  // ── BANNER ────────────────────────────────────────────────────────────
-  function setBanner(type) {
-    const el = document.getElementById('liveBanner');
-    if (!el) return;
-    const msgs = {
-      static:  '📋 Using static fixture data. <a href="https://www.football-data.org/client/register" target="_blank" style="color:var(--gold)">Get a free API key</a> and paste it in js/live.js for live scores & results.',
-      loading: '⏳ Connecting to live data feed…',
-      live:    '🟢 Live data active — scores & results update every 60s.',
-      error:   '⚠️ API error — check your key in js/live.js. Showing static data.',
-    };
-    el.className = `live-banner live-banner--${type}`;
-    el.innerHTML = `<span>${msgs[type]}</span>`;
-    if (type === 'live') setTimeout(() => el.classList.add('live-banner--hidden'), 6000);
-  }
+  function getTopScorers() { return topScorers; }
 
-  return { init, onUpdate, forFixture, scoreLabel, statusBadge, scorersHtml, hasKey };
+  return {
+    init, onUpdate,
+    forFixture, scoreLabel, statusBadge, scorersHtml,
+    hasKey, getTopScorers,
+  };
 })();
