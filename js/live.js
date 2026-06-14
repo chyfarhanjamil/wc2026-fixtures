@@ -45,19 +45,45 @@ const Live = (() => {
         );
         if (anyLive) fetchLive();
       }, LIVE_MS);
-    }).catch(() => _setBanner('error'));
+    }).catch(err => {
+      console.error('[Live] init failed:', err);
+      _setBanner('error', err.message);
+    });
   }
 
   // ── API FETCH ─────────────────────────────────────────────────────────
+  // football-data.org does NOT send CORS headers for browser requests,
+  // so direct fetch() from a static site (e.g. GitHub Pages) is blocked
+  // by the browser before it ever reaches our code. We route through a
+  // free CORS proxy that forwards the request and adds the required
+  // Access-Control-Allow-Origin header.
+  // Two free proxies are tried in order — if the first is down/rate-limited,
+  // the second is used automatically.
+  const CORS_PROXIES = [
+    target => 'https://corsproxy.io/?url=' + encodeURIComponent(target),
+    target => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(target),
+  ];
+
   async function _apiFetch(path) {
-    const res = await fetch(`https://api.football-data.org/v4${path}`, {
-      headers: { 'X-Auth-Token': API_KEY }
-    });
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      throw new Error(`${res.status} ${text.slice(0,80)}`);
+    const target = `https://api.football-data.org/v4${path}`;
+    let lastErr;
+
+    for (const buildUrl of CORS_PROXIES) {
+      try {
+        const res = await fetch(buildUrl(target), {
+          headers: { 'X-Auth-Token': API_KEY }
+        });
+        if (!res.ok) {
+          const text = await res.text().catch(() => '');
+          throw new Error(`${res.status} ${text.slice(0,120)}`);
+        }
+        return await res.json();
+      } catch (e) {
+        lastErr = e;
+        console.warn('[Live] proxy failed, trying next:', e.message);
+      }
     }
-    return res.json();
+    throw lastErr;
   }
 
   // Full poll — matches + scorers
@@ -178,20 +204,20 @@ const Live = (() => {
   }
 
   // ── BANNER ────────────────────────────────────────────────────────────
-  function _setBanner(type) {
+  function _setBanner(type, detail) {
     const el = document.getElementById('liveBanner');
     if (!el) return;
     const msgs = {
       static:  '📋 No API key set — showing static fixture data only.',
       loading: '⏳ Connecting to live data…',
-      waiting: '📅 Connected — live scores will appear once matches kick off (Jun 11).',
+      waiting: '📅 Connected — live scores will appear once matches kick off.',
       live:    '🟢 Live data active — scores update every 60 s.',
       error:   '⚠️ Could not connect to live data. Showing static fixtures.',
     };
     el.className  = `live-banner live-banner--${type}`;
-    el.innerHTML  = `<span>${msgs[type]}</span>`;
+    el.innerHTML  = `<span>${msgs[type]}${detail ? ' <code style="opacity:.7;font-size:11px">(' + detail + ')</code>' : ''}</span>`;
     el.style.display = 'block';
-    // Auto-hide the "live" banner after 8 s
+    // Auto-hide the "live"/"waiting" banner after 8 s; keep error/static visible
     if (type === 'live' || type === 'waiting') {
       setTimeout(() => { el.style.display = 'none'; }, 8000);
     }
