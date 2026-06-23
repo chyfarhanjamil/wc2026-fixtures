@@ -4,7 +4,7 @@
 'use strict';
 
 const App = (() => {
-  let currentMode    = 'teams';
+  let currentMode    = 'group';
   let activeGroup    = null;
   let activeTimeSlot = null;
 
@@ -62,7 +62,7 @@ const App = (() => {
     });
 
     Live.init();
-    setMode('teams');
+    setMode('group');
   }
 
   function rerenderAll() {
@@ -86,8 +86,8 @@ const App = (() => {
     else TeamGrid.render({ mode: currentMode, activeGroup, activeTimeSlot });
 
     // Mode buttons
-    const modeKeys = ['teams','group','time','calendar','bracket','stats'];
-    const modeI18n = ['mode_teams','mode_group','mode_time','mode_calendar','mode_knockout','mode_stats'];
+    const modeKeys = ['group','time','calendar','bracket','stats'];
+    const modeI18n = ['mode_group','mode_time','mode_calendar','mode_knockout','mode_stats'];
     modeKeys.forEach((m, i) => {
       const btn = document.getElementById(`mode${_cap(m)}`);
       if (btn) {
@@ -152,7 +152,7 @@ const App = (() => {
 
   function setMode(mode) {
     currentMode = mode;
-    ['teams','group','time','calendar','bracket','stats'].forEach(m => {
+    ['group','time','calendar','bracket','stats'].forEach(m => {
       const btn = document.getElementById(`mode${_cap(m)}`);
       if (btn) btn.classList.toggle('active', m === mode);
     });

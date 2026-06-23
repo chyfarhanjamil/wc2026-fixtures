@@ -231,7 +231,6 @@ const I18n = (() => {
       en:'Timezone', bn:'সময় অঞ্চল', hi:'समय क्षेत्र',
       fr:'Fuseau horaire', de:'Zeitzone', es:'Zona horaria', pt:'Fuso horário', ar:'المنطقة الزمنية',
     },
-    mode_teams:    { en:'By Team',   bn:'দলভিত্তিক',    hi:'टीम अनुसार',   fr:'Par équipe',  de:'Nach Team',   es:'Por equipo',  pt:'Por equipe',  ar:'حسب الفريق'   },
     mode_group:    { en:'By Group',  bn:'গ্রুপভিত্তিক',  hi:'ग्रुप अनुसार', fr:'Par groupe',  de:'Nach Gruppe', es:'Por grupo',   pt:'Por grupo',   ar:'حسب المجموعة' },
     mode_time:     { en:'By Time',   bn:'সময়ভিত্তিক',   hi:'समय अनुसार',   fr:'Par horaire', de:'Nach Zeit',   es:'Por horario', pt:'Por horário', ar:'حسب الوقت'    },
     mode_calendar: { en:'Calendar',  bn:'ক্যালেন্ডার',  hi:'कैलेंडर',      fr:'Calendrier',  de:'Kalender',    es:'Calendario',  pt:'Calendário',  ar:'التقويم'      },

@@ -47,7 +47,7 @@ const Standings = (() => {
           <thead>
             <tr>
               <th class="col-pos">#</th>
-              <th class="col-team">${I18n.t('mode_teams')}</th>
+              <th class="col-team">${I18n.t('stats_team')}</th>
               <th title="${I18n.t('standings_col_p')}">${I18n.t('standings_col_p')}</th>
               <th title="${I18n.t('standings_col_w')}">${I18n.t('standings_col_w')}</th>
               <th title="${I18n.t('standings_col_d')}">${I18n.t('standings_col_d')}</th>

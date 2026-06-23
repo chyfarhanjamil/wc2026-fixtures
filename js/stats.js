@@ -11,9 +11,6 @@ const Stats = (() => {
   let _teamFilter   = 'all';
   let _showAllGoals = false;
   let _showAllAssists = false;
-  let _showAllGK    = false;
-  let _showAllCards = false;
-  let _showAllTeams = false;
   const INITIAL_ROWS = 10;
 
   /* ── Pull compiled stats from Live data ──────────────────────────────── */
@@ -275,155 +272,8 @@ const Stats = (() => {
     return html;
   }
 
-  function _renderGK() {
-    const { playerMap } = _compile();
-    let rows = Object.entries(playerMap)
-      .map(([name, p]) => ({ name, ...p }))
-      .filter(p => p.saves > 0 || p.cs > 0);
 
-    const hasData = rows.length > 0;
-    if (!hasData) rows = _demoGK();
 
-    rows.sort((a,b) => b.saves - a.saves || b.cs - a.cs);
-    rows = rows.filter(r => _matchesFilter(r.name, r.teamDisplay || r.team || ''));
-    const total = rows.length;
-    const shown = _showAllGK ? rows : rows.slice(0, INITIAL_ROWS);
-    const q = _searchQ;
-
-    let html = `<div class="stats-table-wrap"><table class="stats-table"><thead><tr>
-      <th>${I18n.t('stats_rank')}</th>
-      <th class="col-player">${I18n.t('stats_player')}</th>
-      <th class="col-team-sm">${I18n.t('stats_team')}</th>
-      <th title="${I18n.t('stats_saves')}">${I18n.t('stats_saves')}</th>
-      <th title="${I18n.t('stats_clean_sheets')}" class="col-sm">${I18n.t('stats_cs')}</th>
-      <th title="${I18n.t('stats_save_pct')}" class="col-sm">%</th>
-      <th class="col-sm">${I18n.t('stats_matches')}</th>
-    </tr></thead><tbody>`;
-
-    shown.forEach((r,i) => {
-      const team  = r.teamDisplay || r.team || '';
-      const flag  = _flag(team);
-      const pct   = r.saves + (r.conceded || 0) > 0
-        ? Math.round(r.saves / (r.saves + (r.conceded||0)) * 100) : 0;
-      const rankIco = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : I18n.num(i+1);
-      html += `<tr class="${i < 3 ? 'stats-row--top' : ''}">
-        <td class="col-rank">${rankIco}</td>
-        <td class="col-player"><span class="player-name">${_highlight(r.name, q)}</span></td>
-        <td class="col-team-sm"><span class="player-flag">${flag}</span><span class="player-team">${_highlight(_teamDisplay(team),q)}</span></td>
-        <td class="stats-val--main">${I18n.num(r.saves||0)}</td>
-        <td class="col-sm stats-muted">${I18n.num(r.cs||0)}</td>
-        <td class="col-sm stats-muted">${r.saves > 0 ? I18n.num(pct)+'%' : '—'}</td>
-        <td class="col-sm stats-muted">${I18n.num(r.matchCount||0)}</td>
-      </tr>`;
-    });
-
-    html += `</tbody></table></div>`;
-    if (!hasData) html = `<div class="stats-no-data">${I18n.t('stats_no_data')}</div>` + html;
-    if (total > INITIAL_ROWS) {
-      html += `<button class="stats-more-btn" onclick="Stats.toggleGK()">
-        ${_showAllGK ? I18n.t('stats_show_less') : I18n.t('stats_show_more') + ' (' + I18n.num(total-INITIAL_ROWS) + ')'}
-      </button>`;
-    }
-    return html;
-  }
-
-  function _renderCards() {
-    const { playerMap } = _compile();
-    let rows = Object.entries(playerMap)
-      .map(([name,p]) => ({ name,...p }))
-      .filter(p => p.yellow > 0 || p.red > 0)
-      .sort((a,b) => b.red - a.red || b.yellow - a.yellow);
-
-    if (!rows.length) {
-      return `<div class="stats-no-data">${I18n.t('stats_no_data')}</div>`;
-    }
-
-    rows = rows.filter(r => _matchesFilter(r.name, r.teamDisplay || r.team || ''));
-    const total = rows.length;
-    const shown = _showAllCards ? rows : rows.slice(0, INITIAL_ROWS);
-    const q = _searchQ;
-
-    let html = `<div class="stats-table-wrap"><table class="stats-table"><thead><tr>
-      <th>${I18n.t('stats_rank')}</th>
-      <th class="col-player">${I18n.t('stats_player')}</th>
-      <th class="col-team-sm">${I18n.t('stats_team')}</th>
-      <th title="${I18n.t('stats_yellow')}">🟡</th>
-      <th title="${I18n.t('stats_red')}">🔴</th>
-      <th class="col-sm">${I18n.t('stats_matches')}</th>
-    </tr></thead><tbody>`;
-
-    shown.forEach((r,i) => {
-      const team = r.teamDisplay || r.team || '';
-      const flag = _flag(team);
-      html += `<tr>
-        <td class="col-rank">${I18n.num(i+1)}</td>
-        <td class="col-player"><span class="player-name">${_highlight(r.name,q)}</span></td>
-        <td class="col-team-sm"><span class="player-flag">${flag}</span><span class="player-team">${_highlight(_teamDisplay(team),q)}</span></td>
-        <td class="stats-val--yellow">${I18n.num(r.yellow||0)}</td>
-        <td class="stats-val--red">${r.red > 0 ? I18n.num(r.red) : '—'}</td>
-        <td class="col-sm stats-muted">${I18n.num(r.matchCount||0)}</td>
-      </tr>`;
-    });
-
-    html += `</tbody></table></div>`;
-    if (total > INITIAL_ROWS) {
-      html += `<button class="stats-more-btn" onclick="Stats.toggleCards()">
-        ${_showAllCards ? I18n.t('stats_show_less') : I18n.t('stats_show_more') + ' (' + I18n.num(total-INITIAL_ROWS) + ')'}
-      </button>`;
-    }
-    return html;
-  }
-
-  function _renderTeams() {
-    const { teamMap } = _compile();
-    let rows = WC2026.teams.map(team => {
-      const d = teamMap[team] || { gf:0,ga:0,yellow:0,red:0,matches:0,wins:0,draws:0,losses:0 };
-      return { team, ...d, gd: d.gf - d.ga };
-    });
-
-    const q = _searchQ;
-    if (q) rows = rows.filter(r =>
-      r.team.toLowerCase().includes(q) || I18n.teamName(r.team).toLowerCase().includes(q));
-    rows.sort((a,b) => b.gf - a.gf || b.wins - a.wins || a.team.localeCompare(b.team));
-    const total = rows.length;
-    const shown = _showAllTeams ? rows : rows.slice(0, INITIAL_ROWS);
-
-    let html = `<div class="stats-table-wrap"><table class="stats-table"><thead><tr>
-      <th>${I18n.t('stats_rank')}</th>
-      <th class="col-player">${I18n.t('stats_team')}</th>
-      <th title="${I18n.t('stats_matches')}">${I18n.t('stats_matches')}</th>
-      <th title="${I18n.t('stats_team_goals')}">${I18n.t('stats_goals')}</th>
-      <th title="${I18n.t('stats_team_ga')}" class="col-sm">GA</th>
-      <th title="${I18n.t('stats_team_gd')}" class="col-sm">GD</th>
-      <th title="${I18n.t('stats_yellow')}" class="col-sm">🟡</th>
-      <th title="${I18n.t('stats_red')}" class="col-sm">🔴</th>
-    </tr></thead><tbody>`;
-
-    shown.forEach((r,i) => {
-      const flag = _flag(r.team);
-      const gd   = r.gd > 0 ? `+${I18n.num(r.gd)}` : I18n.num(r.gd);
-      const rankIco = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : I18n.num(i+1);
-      html += `<tr class="${i < 3 ? 'stats-row--top' : ''}">
-        <td class="col-rank">${rankIco}</td>
-        <td class="col-player"><span class="player-flag">${flag}</span>
-          <span class="player-name">${_highlight(I18n.teamName(r.team),q)}</span></td>
-        <td class="stats-muted">${I18n.num(r.matches)}</td>
-        <td class="stats-val--main">${I18n.num(r.gf)}</td>
-        <td class="col-sm stats-muted">${I18n.num(r.ga)}</td>
-        <td class="col-sm ${r.gd>0?'pos-gd':r.gd<0?'neg-gd':''}">${gd}</td>
-        <td class="col-sm stats-muted">${I18n.num(r.yellow||0)}</td>
-        <td class="col-sm stats-muted">${r.red > 0 ? I18n.num(r.red) : '—'}</td>
-      </tr>`;
-    });
-
-    html += `</tbody></table></div>`;
-    if (total > INITIAL_ROWS) {
-      html += `<button class="stats-more-btn" onclick="Stats.toggleTeams()">
-        ${_showAllTeams ? I18n.t('stats_show_less') : I18n.t('stats_show_more') + ' (' + I18n.num(total-INITIAL_ROWS) + ')'}
-      </button>`;
-    }
-    return html;
-  }
 
   /* ── Main render ──────────────────────────────────────────────────────── */
   function render() {
@@ -437,17 +287,12 @@ const Stats = (() => {
     const tabs = [
       { id:'goals',   label: `⚽ ${I18n.t('stats_tab_goals')}` },
       { id:'assists', label: `🎯 ${I18n.t('stats_tab_assists')}` },
-      { id:'gk',      label: `🧤 ${I18n.t('stats_tab_gk')}` },
-      { id:'cards',   label: `🟨 ${I18n.t('stats_tab_cards')}` },
-      { id:'teams',   label: `🏴 ${I18n.t('stats_tab_teams')}` },
     ];
 
     let body;
     if (_activeTab === 'goals')   body = _renderGoals();
     else if (_activeTab === 'assists') body = _renderAssists();
-    else if (_activeTab === 'gk') body = _renderGK();
-    else if (_activeTab === 'cards') body = _renderCards();
-    else body = _renderTeams();
+
 
     container.innerHTML = `
       <div class="stats-page">
@@ -503,10 +348,7 @@ const Stats = (() => {
 
   function toggleGoals()   { _showAllGoals   = !_showAllGoals;   render(); }
   function toggleAssists() { _showAllAssists = !_showAllAssists; render(); }
-  function toggleGK()      { _showAllGK      = !_showAllGK;      render(); }
-  function toggleCards()   { _showAllCards   = !_showAllCards;   render(); }
-  function toggleTeams()   { _showAllTeams   = !_showAllTeams;   render(); }
 
   return { render, setTab, onSearch, onTeamFilter,
-           toggleGoals, toggleAssists, toggleGK, toggleCards, toggleTeams };
+           toggleGoals, toggleAssists };
 })();
