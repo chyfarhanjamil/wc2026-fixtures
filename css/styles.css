@@ -257,7 +257,7 @@ header p {
 /* ── Mode bar ───────────────────────────────────────────────────────────── */
 .mode-bar {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 6px;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
