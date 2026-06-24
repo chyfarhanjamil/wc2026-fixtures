@@ -1,0 +1,41 @@
+name: Fetch WC2026 Scores
+
+on:
+  schedule:
+    - cron: '*/2 * * * *'   # runs every 2 minutes, 24/7
+  workflow_dispatch:          # lets you trigger it manually from GitHub
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create data folder if missing
+        run: mkdir -p data
+
+      - name: Fetch matches from football-data.org
+        run: |
+          curl -s \
+            -H "X-Auth-Token: 72f45df7ce7b4991ac9ebd929bf4c53d" \
+            "https://api.football-data.org/v4/competitions/2000/matches?season=2026" \
+            -o data/matches.json
+
+      - name: Fetch top scorers from football-data.org
+        run: |
+          curl -s \
+            -H "X-Auth-Token: 72f45df7ce7b4991ac9ebd929bf4c53d" \
+            "https://api.football-data.org/v4/competitions/2000/scorers?season=2026&limit=100" \
+            -o data/scorers.json
+
+      - name: Commit and push updated JSON files
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/matches.json data/scorers.json
+          git diff --staged --quiet || git commit -m "score update $(date -u +'%Y-%m-%d %H:%M UTC')"
+          git push
