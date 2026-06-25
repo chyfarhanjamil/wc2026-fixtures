@@ -164,31 +164,36 @@ const Live = (() => {
     matches.forEach(m => {
       const ft = m.score?.fullTime || {};
       const ht = m.score?.halfTime || {};
-      const payload = {
-        status:    m.status,
-        scoreHome: ft.home ?? null,
-        scoreAway: ft.away ?? null,
-        htHome:    ht.home ?? null,
-        htAway:    ht.away ?? null,
-        minute:    m.minute || null,
-        homeApi:   m.homeTeam?.name || '',
-        awayApi:   m.awayTeam?.name || '',
-        scorers: (m.goals || []).map(g => ({
-          team:   _canon(g.team?.name || ''),
-          player: g.scorer?.name     || 'Own Goal',
-          minute: g.minute,
-          type:   g.type             || 'REGULAR',
-        })),
-      };
 
       const hc     = _canon(m.homeTeam?.name || '');
       const ac     = _canon(m.awayTeam?.name || '');
       const utcKey = (m.utcDate || '').slice(0, 16);
 
+      // Helper: build payload, swapping scores if API home/away is reversed vs fixture
+      function _makePayload(fixtureHome) {
+        const reversed = fixtureHome && _canon(fixtureHome) !== hc;
+        return {
+          status:    m.status,
+          scoreHome: reversed ? (ft.away ?? null) : (ft.home ?? null),
+          scoreAway: reversed ? (ft.home ?? null) : (ft.away ?? null),
+          htHome:    reversed ? (ht.away ?? null) : (ht.home ?? null),
+          htAway:    reversed ? (ht.home ?? null) : (ht.away ?? null),
+          minute:    m.minute || null,
+          homeApi:   m.homeTeam?.name || '',
+          awayApi:   m.awayTeam?.name || '',
+          scorers: (m.goals || []).map(g => ({
+            team:   _canon(g.team?.name || ''),
+            player: g.scorer?.name     || 'Own Goal',
+            minute: g.minute,
+            type:   g.type             || 'REGULAR',
+          })),
+        };
+      }
+
       // Route 1: match by UTC kick-off time (works for ALL stages)
       const timeMatches = _utcIndex.get(utcKey) || [];
       if (timeMatches.length === 1) {
-        liveData[`local_${timeMatches[0].id}`] = payload; return;
+        liveData[`local_${timeMatches[0].id}`] = _makePayload(timeMatches[0].home); return;
       }
       if (timeMatches.length > 1) {
         // Same kick-off slot (simultaneous matches) — break tie by team name.
@@ -197,7 +202,7 @@ const Live = (() => {
           f => (_canon(f.home) === hc && _canon(f.away) === ac) ||
                (_canon(f.home) === ac && _canon(f.away) === hc)
         );
-        if (hit) { liveData[`local_${hit.id}`] = payload; return; }
+        if (hit) { liveData[`local_${hit.id}`] = _makePayload(hit.home); return; }
       }
 
       // Route 2: team name fallback (group stage only)
@@ -206,7 +211,7 @@ const Live = (() => {
         if (f.stage !== 'group') return;
         if ((_canon(f.home) === hc && _canon(f.away) === ac) ||
             (_canon(f.home) === ac && _canon(f.away) === hc))
-          liveData[`local_${f.id}`] = payload;
+          liveData[`local_${f.id}`] = _makePayload(f.home);
       });
     });
   }
