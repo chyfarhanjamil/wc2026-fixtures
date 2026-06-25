@@ -1,31 +1,25 @@
 /**
  * live.js — reads scores from /data/matches.json + /data/scorers.json
+ * Updated by GitHub Actions every 2 minutes.
  *
- * These two JSON files live inside YOUR OWN GitHub repo.
- * A GitHub Actions workflow updates them every 2 minutes by calling
- * football-data.org from GitHub's servers (no CORS, no restrictions).
- *
- * Your browser only ever fetches from YOUR OWN domain (same origin).
- * No external URLs. No proxies. No Cloudflare.
- * Works on every browser, every network, including restricted ones.
+ * CANON MAP verified against actual API response from football-data.org
+ * for WC2026. Every team name the API sends is mapped to the exact name
+ * used in data.js.
  */
 'use strict';
 
 const Live = (() => {
 
-  // ── CONFIG ────────────────────────────────────────────────────────────
-  const POLL_MS           = 120000; // re-read JSON every 2 min
+  const POLL_MS           = 120000;
   const CACHE_KEY_MATCHES = 'wc2026_v2_matches';
   const CACHE_KEY_SCORERS = 'wc2026_v2_scorers';
 
-  // ── STATE ─────────────────────────────────────────────────────────────
   let liveData   = {};
   let topScorers = [];
   let listeners  = [];
   const hasKey   = true;
 
-  // ── CACHE (localStorage) ──────────────────────────────────────────────
-  // Saves results after every fetch so they survive page reloads instantly.
+  // ── CACHE ─────────────────────────────────────────────────────────────
   function _saveCache() {
     try {
       localStorage.setItem(CACHE_KEY_MATCHES, JSON.stringify(liveData));
@@ -46,27 +40,22 @@ const Live = (() => {
   // ── INIT ──────────────────────────────────────────────────────────────
   function init() {
     _buildUtcIndex();
-
-    // Load cache first — previous results show instantly with zero delay
     const hadCache = _loadCache();
-    if (hadCache) { _notify(); _setBanner('cached'); }
-    else { _setBanner('loading'); }
+    if (hadCache) { _notify(); _updateLiveBanner(); }
+    else { _setStatusBanner('loading'); }
 
-    // Then fetch fresh data in the background
     fetchAll()
       .then(() => {
-        _setBanner(Object.keys(liveData).length > 0 ? 'live' : 'waiting');
-        // Keep polling every 2 min to pick up new GitHub Actions commits
-        setInterval(fetchAll, POLL_MS);
+        _updateLiveBanner();
+        setInterval(() => { fetchAll().then(_updateLiveBanner); }, POLL_MS);
       })
       .catch(err => {
         console.error('[Live] fetch failed:', err);
-        _setBanner(hadCache ? 'cached_error' : 'error', err.message);
+        if (!hadCache) _setStatusBanner('error', err.message);
       });
   }
 
-  // ── FETCH from same-domain JSON files ─────────────────────────────────
-  // ?t=timestamp busts the browser cache so we always get the latest file.
+  // ── FETCH ─────────────────────────────────────────────────────────────
   async function fetchAll() {
     const t = Date.now();
     const [matchRes, scorerRes] = await Promise.allSettled([
@@ -75,58 +64,156 @@ const Live = (() => {
       fetch(`data/scorers.json?t=${t}`)
         .then(r => { if (!r.ok) throw new Error(`scorers ${r.status}`); return r.json(); }),
     ]);
-
-    // If BOTH fail (files don't exist yet), throw so caller knows
     if (matchRes.status === 'rejected' && scorerRes.status === 'rejected')
       throw new Error('JSON files not found — has the GitHub Action run yet?');
-
     if (matchRes.status  === 'fulfilled') _ingestMatches(matchRes.value.matches  || []);
     if (scorerRes.status === 'fulfilled') _ingestScorers(scorerRes.value.scorers || []);
-    else console.warn('[Live] scorers not ready yet');
-
     _saveCache();
     _notify();
   }
 
-  // ── CANON MAP — API name → data.js name ──────────────────────────────
+  // ── LIVE MATCH BANNER ─────────────────────────────────────────────────
+  function _updateLiveBanner() {
+    const banner = document.getElementById('liveBanner');
+    if (!banner) return;
+
+    const liveMatches = [];
+    WC2026.FIXTURES.forEach(f => {
+      const d = liveData[`local_${f.id}`];
+      if (d && (d.status === 'IN_PLAY' || d.status === 'PAUSED'))
+        liveMatches.push({ f, d });
+    });
+
+    if (liveMatches.length === 0) {
+      if (banner.classList.contains('live-banner--live-now')) {
+        banner.style.display = 'none';
+        banner.className = 'live-banner';
+      }
+      return;
+    }
+
+    const cards = liveMatches.map(({ f, d }) => {
+      const scoreStr = d.scoreHome !== null
+        ? `<span class="lbm-score">${d.scoreHome} – ${d.scoreAway}</span>`
+        : `<span class="lbm-vs">vs</span>`;
+      const minStr = d.status === 'PAUSED'
+        ? `<span class="lbm-min">HT</span>`
+        : d.minute ? `<span class="lbm-min">${d.minute}'</span>` : '';
+      return `
+        <div class="lbm-match">
+          <span class="lbm-dot"></span>
+          <span class="lbm-team">${f.home}</span>
+          ${scoreStr}
+          <span class="lbm-team">${f.away}</span>
+          ${minStr}
+        </div>`;
+    }).join('');
+
+    banner.className = 'live-banner live-banner--live-now';
+    banner.style.display = 'block';
+    banner.innerHTML = `
+      <div class="lbm-inner">
+        <span class="lbm-label">🔴 LIVE</span>
+        <div class="lbm-matches">${cards}</div>
+      </div>`;
+  }
+
+  // ── STATUS BANNER ─────────────────────────────────────────────────────
+  function _setStatusBanner(type, detail) {
+    const el = document.getElementById('liveBanner');
+    if (!el) return;
+    const msgs = {
+      loading: '⏳ Loading match data…',
+      error:   '⚠️ Could not load data. Showing cached results.',
+    };
+    el.className = `live-banner live-banner--${type}`;
+    el.innerHTML = `<span>${msgs[type] || ''}${detail
+      ? ` <code style="opacity:.7;font-size:11px">(${detail})</code>` : ''}</span>`;
+    el.style.display = 'block';
+    if (type !== 'error') setTimeout(() => { el.style.display = 'none'; }, 6000);
+  }
+
+  // ── CANON MAP ─────────────────────────────────────────────────────────
+  // Verified against actual football-data.org API response for WC2026.
+  // Left side  = exactly what the API sends (lowercased for matching)
+  // Right side = exactly what data.js uses
   const CANON_MAP = {
-    'mexico':'Mexico','south africa':'South Africa',
-    'korea republic':'Korea Republic','republic of korea':'Korea Republic','south korea':'Korea Republic',
-    'czechia':'Czechia','czech republic':'Czechia',
-    'canada':'Canada',
-    'bosnia and herzegovina':'Bosnia & Herzegovina',
-    'bosnia & herzegovina':'Bosnia & Herzegovina',
-    'bosnia-herzegovina':'Bosnia & Herzegovina',
-    'qatar':'Qatar','switzerland':'Switzerland',
-    'brazil':'Brazil','morocco':'Morocco','haiti':'Haiti','scotland':'Scotland',
-    'united states':'USA','united states of america':'USA','usa':'USA','us':'USA',
-    'paraguay':'Paraguay','australia':'Australia',
-    'türkiye':'Türkiye','turkiye':'Türkiye','turkey':'Türkiye',
-    'germany':'Germany',
-    'curaçao':'Curaçao','curacao':'Curaçao',
-    'ivory coast':'Ivory Coast',
-    "côte d'ivoire":'Ivory Coast',"cote d'ivoire":'Ivory Coast',
-    'ecuador':'Ecuador',
-    'netherlands':'Netherlands','holland':'Netherlands',
-    'japan':'Japan','tunisia':'Tunisia','sweden':'Sweden',
-    'belgium':'Belgium','egypt':'Egypt','iran':'Iran','new zealand':'New Zealand',
-    'spain':'Spain','cabo verde':'Cabo Verde','cape verde':'Cabo Verde',
-    'saudi arabia':'Saudi Arabia','ksa':'Saudi Arabia',
-    'uruguay':'Uruguay','france':'France','senegal':'Senegal',
-    'iraq':'Iraq','norway':'Norway',
-    'argentina':'Argentina','algeria':'Algeria','austria':'Austria','jordan':'Jordan',
-    'portugal':'Portugal',
-    'congo dr':'Congo DR','dr congo':'Congo DR',
-    'democratic republic of congo':'Congo DR',
-    'democratic republic of the congo':'Congo DR','congo, dr':'Congo DR',
-    'uzbekistan':'Uzbekistan','colombia':'Colombia',
-    'england':'England','croatia':'Croatia','ghana':'Ghana','panama':'Panama',
+    // The 5 confirmed mismatches from actual API data:
+    'bosnia-herzegovina':               'Bosnia & Herzegovina',  // API sends this
+    'bosnia and herzegovina':           'Bosnia & Herzegovina',  // fallback variant
+    'bosnia & herzegovina':             'Bosnia & Herzegovina',
+    'cape verde islands':               'Cabo Verde',            // API sends this
+    'cabo verde':                       'Cabo Verde',
+    'cape verde':                       'Cabo Verde',
+    'south korea':                      'Korea Republic',        // API sends this
+    'korea republic':                   'Korea Republic',
+    'republic of korea':                'Korea Republic',
+    'turkey':                           'Türkiye',               // API sends this
+    'türkiye':                          'Türkiye',
+    'turkiye':                          'Türkiye',
+    'united states':                    'USA',                   // API sends this
+    'united states of america':         'USA',
+    'usa':                              'USA',
+    'us':                               'USA',
+    // All others match exactly (verified) — still include for safety:
+    'algeria':       'Algeria',
+    'argentina':     'Argentina',
+    'australia':     'Australia',
+    'austria':       'Austria',
+    'belgium':       'Belgium',
+    'brazil':        'Brazil',
+    'canada':        'Canada',
+    'colombia':      'Colombia',
+    'congo dr':      'Congo DR',
+    'dr congo':      'Congo DR',
+    'democratic republic of congo':     'Congo DR',
+    'democratic republic of the congo': 'Congo DR',
+    'croatia':       'Croatia',
+    'curaçao':       'Curaçao',
+    'curacao':       'Curaçao',
+    'czechia':       'Czechia',
+    'czech republic':'Czechia',
+    'ecuador':       'Ecuador',
+    'egypt':         'Egypt',
+    'england':       'England',
+    'france':        'France',
+    'germany':       'Germany',
+    'ghana':         'Ghana',
+    'haiti':         'Haiti',
+    'iran':          'Iran',
+    'iraq':          'Iraq',
+    'ivory coast':   'Ivory Coast',
+    "côte d'ivoire": 'Ivory Coast',
+    "cote d'ivoire": 'Ivory Coast',
+    'japan':         'Japan',
+    'jordan':        'Jordan',
+    'mexico':        'Mexico',
+    'morocco':       'Morocco',
+    'netherlands':   'Netherlands',
+    'holland':       'Netherlands',
+    'new zealand':   'New Zealand',
+    'norway':        'Norway',
+    'panama':        'Panama',
+    'paraguay':      'Paraguay',
+    'portugal':      'Portugal',
+    'qatar':         'Qatar',
+    'saudi arabia':  'Saudi Arabia',
+    'scotland':      'Scotland',
+    'senegal':       'Senegal',
+    'south africa':  'South Africa',
+    'spain':         'Spain',
+    'sweden':        'Sweden',
+    'switzerland':   'Switzerland',
+    'tunisia':       'Tunisia',
+    'uruguay':       'Uruguay',
+    'uzbekistan':    'Uzbekistan',
   };
 
   function _canon(name) {
     if (!name) return '';
     const key = name.toLowerCase().trim();
     if (CANON_MAP[key]) return CANON_MAP[key];
+    // Strip diacritics as fallback (handles ü, é, ç etc.)
     const stripped = key.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     if (CANON_MAP[stripped]) return CANON_MAP[stripped];
     for (const [k, v] of Object.entries(CANON_MAP))
@@ -134,14 +221,16 @@ const Live = (() => {
     return name.trim();
   }
 
-  // ── UTC INDEX — kick-off time → fixture lookup ────────────────────────
+  // ── UTC INDEX ─────────────────────────────────────────────────────────
+  // Primary match key: "YYYY-MM-DDTHH:MM" → fixture(s)
+  // Works for all stages. Team name used only as tiebreaker.
   let _utcIndex = null;
 
   function _buildUtcIndex() {
     _utcIndex = new Map();
     WC2026.FIXTURES.forEach(f => {
       if (!f.utc) return;
-      const key = f.utc.slice(0, 16);
+      const key = f.utc.slice(0, 16); // "2026-06-11T19:00"
       if (!_utcIndex.has(key)) _utcIndex.set(key, []);
       _utcIndex.get(key).push(f);
     });
@@ -175,20 +264,21 @@ const Live = (() => {
       const ac     = _canon(m.awayTeam?.name || '');
       const utcKey = (m.utcDate || '').slice(0, 16);
 
-      // Route 1: match by UTC kick-off time (works for ALL stages)
+      // Route 1: UTC time match (primary — works for all stages)
       const timeMatches = _utcIndex.get(utcKey) || [];
       if (timeMatches.length === 1) {
-        liveData[`local_${timeMatches[0].id}`] = payload; return;
+        liveData[`local_${timeMatches[0].id}`] = payload;
+        return;
       }
       if (timeMatches.length > 1) {
-        // Same kick-off slot (simultaneous matches) — break tie by team name
+        // Same kick-off slot — break tie by canonical team name
         const hit = timeMatches.find(
           f => _canon(f.home) === hc && _canon(f.away) === ac
         );
         if (hit) { liveData[`local_${hit.id}`] = payload; return; }
       }
 
-      // Route 2: team name fallback (group stage only)
+      // Route 2: name-only fallback (group stage)
       WC2026.FIXTURES.forEach(f => {
         if (f.stage !== 'group') return;
         if (_canon(f.home) === hc && _canon(f.away) === ac)
@@ -215,28 +305,8 @@ const Live = (() => {
     listeners.forEach(fn => { try { fn(liveData); } catch(e) {} });
   }
 
-  // ── BANNER ────────────────────────────────────────────────────────────
-  function _setBanner(type, detail) {
-    const el = document.getElementById('liveBanner');
-    if (!el) return;
-    const msgs = {
-      loading:      '⏳ Loading match data…',
-      cached:       '📦 Showing saved results — refreshing…',
-      cached_error: '⚠️ Could not refresh — showing last saved results.',
-      waiting:      '📅 Connected — scores appear when matches kick off.',
-      live:         '🟢 Live — updates every 2 min.',
-      error:        '⚠️ Score files not ready yet — please refresh in a moment.',
-    };
-    el.className = `live-banner live-banner--${type}`;
-    el.innerHTML = `<span>${msgs[type] || ''}${detail
-      ? ` <code style="opacity:.7;font-size:11px">(${detail})</code>` : ''}</span>`;
-    el.style.display = 'block';
-    if (['live','waiting','cached'].includes(type))
-      setTimeout(() => { el.style.display = 'none'; }, 8000);
-  }
-
-  // ── PUBLIC API (unchanged — no other file needs to change) ────────────
-  function onUpdate(fn) { listeners.push(fn); }
+  // ── PUBLIC ────────────────────────────────────────────────────────────
+  function onUpdate(fn)  { listeners.push(fn); }
   function forFixture(f) { return liveData[`local_${f.id}`] || null; }
 
   function scoreLabel(f) {
@@ -270,9 +340,5 @@ const Live = (() => {
 
   function getTopScorers() { return topScorers; }
 
-  return {
-    init, onUpdate,
-    forFixture, scoreLabel, statusBadge, scorersHtml,
-    hasKey, getTopScorers,
-  };
+  return { init, onUpdate, forFixture, scoreLabel, statusBadge, scorersHtml, hasKey, getTopScorers };
 })();
