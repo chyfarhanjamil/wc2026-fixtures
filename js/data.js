@@ -112,9 +112,9 @@ const WC2026 = (() => {
 
     // June 19
     {id:29, stage:'group', group:'D', home:'USA',                  away:'Australia',            utc:'2026-06-19T19:00:00Z', venue:'Seattle'},
-    {id:30, stage:'group', group:'C', home:'Scotland',             away:'Morocco',              utc:'2026-06-19T19:00:00Z', venue:'Boston'},
-    {id:31, stage:'group', group:'C', home:'Brazil',               away:'Haiti',                utc:'2026-06-20T01:00:00Z', venue:'Philadelphia'},
-    {id:32, stage:'group', group:'D', home:'Türkiye',              away:'Paraguay',             utc:'2026-06-20T04:00:00Z', venue:'San Francisco'},
+    {id:30, stage:'group', group:'C', home:'Scotland',             away:'Morocco',              utc:'2026-06-19T22:00:00Z', venue:'Boston'},
+    {id:31, stage:'group', group:'C', home:'Brazil',               away:'Haiti',                utc:'2026-06-20T00:30:00Z', venue:'Philadelphia'},
+    {id:32, stage:'group', group:'D', home:'Türkiye',              away:'Paraguay',             utc:'2026-06-20T03:00:00Z', venue:'San Francisco'},
 
     // June 20
     {id:33, stage:'group', group:'F', home:'Netherlands',           away:'Sweden',               utc:'2026-06-20T17:00:00Z', venue:'Houston'},
