@@ -55,6 +55,7 @@ const App = (() => {
     _applyStaticStrings();
 
     Live.onUpdate(() => {
+      Resolver.invalidate();
       TeamGrid.refreshLive();
       if (currentMode === 'calendar') Calendar.refreshLive();
       if (currentMode === 'bracket')  Bracket.refreshLive();

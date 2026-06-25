@@ -71,12 +71,15 @@ const Bracket = (() => {
       const score = Live.scoreLabel(f);
       const badge = Live.statusBadge(f);
 
-      const dHome = translatePlaceholder(f.home);
-      const dAway = translatePlaceholder(f.away);
+      // Resolver fills in real team names once group/earlier-round results
+      // make them certain; anything still unknown keeps its placeholder text.
+      const resolved = Resolver.resolve(f);
+      const dHome = resolved.homeResolved ? resolved.home : translatePlaceholder(resolved.home);
+      const dAway = resolved.awayResolved ? resolved.away : translatePlaceholder(resolved.away);
 
-      // Tooltip descriptions if available
-      const homeDesc = f.homeDesc || '';
-      const awayDesc = f.awayDesc || '';
+      // Tooltip descriptions if available (cleared once that side is resolved)
+      const homeDesc = resolved.homeDesc || '';
+      const awayDesc = resolved.awayDesc || '';
       const isPending = !score && f.stage !== 'group';
 
       const scoreOrVs = score

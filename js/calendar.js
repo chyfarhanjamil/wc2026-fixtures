@@ -12,6 +12,22 @@ const Calendar = (() => {
     return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
   }
 
+  // True if a fixture matches the search query — for group matches this
+  // checks the English/translated team names; for KO matches it also checks
+  // the Resolver-resolved real team name (once known), so e.g. searching
+  // "Brazil" finds a knockout match even before the placeholder text changes.
+  function _matchesQuery(f, q) {
+    if (!q) return true;
+    if (f.teams.some(t => t.toLowerCase().includes(q) || I18n.teamName(t).toLowerCase().includes(q))) return true;
+    if (f.isKO) {
+      if (f.home.toLowerCase().includes(q) || f.away.toLowerCase().includes(q)) return true;
+      const r = Resolver.resolve(f);
+      if (r.homeResolved && r.home.toLowerCase().includes(q)) return true;
+      if (r.awayResolved && r.away.toLowerCase().includes(q)) return true;
+    }
+    return false;
+  }
+
   function shiftMonth(delta) {
     calMonth += delta;
     if (calMonth > 12) { calMonth = 1; calYear++; }
@@ -51,9 +67,7 @@ const Calendar = (() => {
       const allMatches = WC2026.dayMap[key] || [];
       // search by English name so it still works in all languages
       const filtered   = q
-        ? allMatches.filter(f =>
-            f.teams.some(t => t.toLowerCase().includes(q) || I18n.teamName(t).toLowerCase().includes(q)) ||
-            (f.isKO && (f.home.toLowerCase().includes(q) || f.away.toLowerCase().includes(q))))
+        ? allMatches.filter(f => _matchesQuery(f, q))
         : allMatches;
 
       const hasLive = allMatches.some(f => {
@@ -106,9 +120,7 @@ const Calendar = (() => {
     const q          = getQ();
     const allMatches = WC2026.dayMap[selectedKey] || [];
     const filtered   = q
-      ? allMatches.filter(f =>
-          f.teams.some(t => t.toLowerCase().includes(q) || I18n.teamName(t).toLowerCase().includes(q)) ||
-          (f.isKO && (f.home.toLowerCase().includes(q) || f.away.toLowerCase().includes(q))))
+      ? allMatches.filter(f => _matchesQuery(f, q))
       : allMatches;
 
     const dateLabel  = _dateLabel(selectedKey);
@@ -118,9 +130,7 @@ const Calendar = (() => {
 
     if (filtered.length === 0) {
       const teamMatches = q
-        ? WC2026.FIXTURES.filter(f =>
-            f.teams.some(t => t.toLowerCase().includes(q) || I18n.teamName(t).toLowerCase().includes(q)) ||
-            (f.isKO && (f.home.toLowerCase().includes(q) || f.away.toLowerCase().includes(q))))
+        ? WC2026.FIXTURES.filter(f => _matchesQuery(f, q))
         : [];
       header.textContent = I18n.t('cal_no_match', { q, date: dateLabel });
       list.innerHTML = teamMatches.length
@@ -142,12 +152,14 @@ const Calendar = (() => {
     const badge  = Live.statusBadge(f);
     const dGroup = f.displayGroup || f.group;
 
-    // For group stage use translated names; for KO translate the placeholder group letters
+    // For group stage use translated names; for KO ask the Resolver for the
+    // real team name (once known) and fall back to a translated placeholder.
+    const resolved  = f.isKO ? Resolver.resolve(f) : null;
     const dHome = f.isKO
-      ? f.home.replace(/\b([A-L])\b/g, l => I18n.groupLetter(l))
+      ? (resolved.homeResolved ? resolved.home : resolved.home.replace(/\b([A-L])\b/g, l => I18n.groupLetter(l)))
       : (f.displayHome || f.home);
     const dAway = f.isKO
-      ? f.away.replace(/\b([A-L])\b/g, l => I18n.groupLetter(l))
+      ? (resolved.awayResolved ? resolved.away : resolved.away.replace(/\b([A-L])\b/g, l => I18n.groupLetter(l)))
       : (f.displayAway || f.away);
 
     const scoreOrVs = score
@@ -158,11 +170,13 @@ const Calendar = (() => {
       ? `<span class="day-stage-pill day-stage-pill--ko">${f.label}</span>`
       : `<span class="day-stage-pill">${I18n.t('group_prefix')} ${dGroup}</span>`;
 
-    // For KO fixtures that haven't been played yet, show a friendly hint
-    const koHint = (f.isKO && !score && f.homeDesc && f.awayDesc)
+    // For KO fixtures that haven't been played yet, show a friendly hint for
+    // whichever side(s) are still unresolved (a side already resolved by the
+    // Resolver — e.g. "Brazil" instead of "1st Group C" — needs no hint).
+    const koHint = (f.isKO && !score && (resolved.homeDesc || resolved.awayDesc))
       ? `<div class="day-ko-hint">
-           <div class="day-ko-team-hint"><strong>${dHome}</strong><br><span>${f.homeDesc.replace(/\n/g,' · ')}</span></div>
-           <div class="day-ko-team-hint"><strong>${dAway}</strong><br><span>${f.awayDesc.replace(/\n/g,' · ')}</span></div>
+           ${resolved.homeDesc ? `<div class="day-ko-team-hint"><strong>${dHome}</strong><br><span>${resolved.homeDesc.replace(/\n/g,' · ')}</span></div>` : ''}
+           ${resolved.awayDesc ? `<div class="day-ko-team-hint"><strong>${dAway}</strong><br><span>${resolved.awayDesc.replace(/\n/g,' · ')}</span></div>` : ''}
          </div>`
       : '';
 
