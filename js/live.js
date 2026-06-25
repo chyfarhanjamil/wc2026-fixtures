@@ -49,15 +49,19 @@ const Live = (() => {
 
     // Load cache first — previous results show instantly with zero delay
     const hadCache = _loadCache();
-    if (hadCache) { _notify(); _setBanner('cached'); }
-    else { _setBanner('loading'); }
+    if (hadCache) { _notify(); }
+    // Always show "fetching" banner so user knows a refresh is happening
+    _setBanner('loading');
 
     // Then fetch fresh data in the background
     fetchAll()
       .then(() => {
         _setBanner(Object.keys(liveData).length > 0 ? 'live' : 'waiting');
         // Keep polling every 2 min to pick up new GitHub Actions commits
-        setInterval(fetchAll, POLL_MS);
+        setInterval(() => { _setBanner('loading'); fetchAll()
+          .then(() => _setBanner(Object.keys(liveData).length > 0 ? 'live' : 'waiting'))
+          .catch(err => _setBanner('cached_error', err.message));
+        }, POLL_MS);
       })
       .catch(err => {
         console.error('[Live] fetch failed:', err);
@@ -121,6 +125,12 @@ const Live = (() => {
     'democratic republic of the congo':'Congo DR','congo, dr':'Congo DR',
     'uzbekistan':'Uzbekistan','colombia':'Colombia',
     'england':'England','croatia':'Croatia','ghana':'Ghana','panama':'Panama',
+    // Extra aliases seen in the API responses
+    'cape verde islands':'Cabo Verde','cape verde':'Cabo Verde',
+    'bosnia-herzegovina':'Bosnia & Herzegovina',
+    'bosnia and herzegovina':'Bosnia & Herzegovina',
+    'south korea':'Korea Republic','republic of korea':'Korea Republic',
+    'congo, dr':'Congo DR','dr. congo':'Congo DR',
   };
 
   function _canon(name) {
@@ -181,17 +191,21 @@ const Live = (() => {
         liveData[`local_${timeMatches[0].id}`] = payload; return;
       }
       if (timeMatches.length > 1) {
-        // Same kick-off slot (simultaneous matches) — break tie by team name
+        // Same kick-off slot (simultaneous matches) — break tie by team name.
+        // The API sometimes swaps home/away vs our fixture list, so check both orderings.
         const hit = timeMatches.find(
-          f => _canon(f.home) === hc && _canon(f.away) === ac
+          f => (_canon(f.home) === hc && _canon(f.away) === ac) ||
+               (_canon(f.home) === ac && _canon(f.away) === hc)
         );
         if (hit) { liveData[`local_${hit.id}`] = payload; return; }
       }
 
       // Route 2: team name fallback (group stage only)
+      // Also tolerates home/away reversal from the API.
       WC2026.FIXTURES.forEach(f => {
         if (f.stage !== 'group') return;
-        if (_canon(f.home) === hc && _canon(f.away) === ac)
+        if ((_canon(f.home) === hc && _canon(f.away) === ac) ||
+            (_canon(f.home) === ac && _canon(f.away) === hc))
           liveData[`local_${f.id}`] = payload;
       });
     });
@@ -220,19 +234,31 @@ const Live = (() => {
     const el = document.getElementById('liveBanner');
     if (!el) return;
     const msgs = {
-      loading:      '⏳ Loading match data…',
+      loading:      '⏳ Fetching latest scores…',
       cached:       '📦 Showing saved results — refreshing…',
       cached_error: '⚠️ Could not refresh — showing last saved results.',
-      waiting:      '📅 Connected — scores appear when matches kick off.',
-      live:         '🟢 Live — updates every 2 min.',
+      waiting:      '📅 Live — scores will appear when matches kick off.',
+      live:         '🟢 Live data loaded — updates every 2 min.',
       error:        '⚠️ Score files not ready yet — please refresh in a moment.',
     };
+    // Clear any pending hide timer
+    if (el._hideTimer) { clearTimeout(el._hideTimer); el._hideTimer = null; }
     el.className = `live-banner live-banner--${type}`;
+    el.style.opacity = '1';
+    el.style.transition = '';
     el.innerHTML = `<span>${msgs[type] || ''}${detail
       ? ` <code style="opacity:.7;font-size:11px">(${detail})</code>` : ''}</span>`;
     el.style.display = 'block';
-    if (['live','waiting','cached'].includes(type))
-      setTimeout(() => { el.style.display = 'none'; }, 8000);
+    // Auto-hide with fade for success/info states; keep error states visible longer
+    const hideDelay = type === 'loading' ? null :
+                      ['error','cached_error'].includes(type) ? 10000 : 4000;
+    if (hideDelay !== null) {
+      el._hideTimer = setTimeout(() => {
+        el.style.transition = 'opacity 0.6s ease';
+        el.style.opacity = '0';
+        setTimeout(() => { el.style.display = 'none'; el.style.opacity = '1'; }, 650);
+      }, hideDelay);
+    }
   }
 
   // ── PUBLIC API (unchanged — no other file needs to change) ────────────
