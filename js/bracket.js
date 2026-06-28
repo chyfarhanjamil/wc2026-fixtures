@@ -9,8 +9,33 @@ const Bracket = (() => {
   // Track which sections are open (default: all open)
   const _open = { standings: false, r32: false, r16: false, qf: true, sf: true, '3rd': true, final: true };
 
+  // Map of KO match IDs to a short human-readable label
+  const KO_MATCH_LABELS = {
+    // R32
+    73:'R32: 2nd-A vs 2nd-B', 76:'R32: 1st-C vs 2nd-F', 74:'R32: 1st-E vs Best 3rd',
+    75:'R32: 1st-F vs 2nd-C', 78:'R32: 2nd-E vs 2nd-I', 77:'R32: 1st-I vs Best 3rd',
+    79:'R32: 1st-A vs Best 3rd', 80:'R32: 1st-L vs Best 3rd', 82:'R32: 1st-G vs Best 3rd',
+    81:'R32: 1st-D vs Best 3rd', 84:'R32: 1st-H vs 2nd-J', 83:'R32: 2nd-K vs 2nd-L',
+    85:'R32: 1st-B vs Best 3rd', 88:'R32: 2nd-D vs 2nd-G', 86:'R32: 1st-J vs 2nd-H',
+    87:'R32: 1st-K vs Best 3rd',
+    // R16
+    90:'R16 (Jul 4, Houston)', 89:'R16 (Jul 4, Philadelphia)', 91:'R16 (Jul 5, NY/NJ)',
+    92:'R16 (Jul 6, Mexico City)', 93:'R16 (Jul 6, Dallas)', 94:'R16 (Jul 7, Seattle)',
+    95:'R16 (Jul 7, Atlanta)', 96:'R16 (Jul 7, NY/NJ)',
+    // QF
+    97:'QF (Jul 9, Dallas)', 98:'QF (Jul 9, Los Angeles)', 99:'QF (Jul 10, NY/NJ)', 100:'QF (Jul 11, Boston)',
+    // SF
+    101:'SF (Jul 14, Dallas)', 102:'SF (Jul 15, NY/NJ)',
+  };
+
   function translatePlaceholder(raw) {
     if (!raw) return raw;
+    // Replace "Winner R32 Match 73" → "Winner R32: 1st-C vs 2nd-F" etc.
+    const m = raw.match(/^(Winner|Loser)\s+(?:R32|R16|QF|SF)\s+Match\s+(\d+)$/);
+    if (m) {
+      const label = KO_MATCH_LABELS[parseInt(m[2])];
+      return label ? `${m[1]} of ${label}` : raw;
+    }
     return raw.replace(/\b([A-L])\b/g, letter => I18n.groupLetter(letter));
   }
 

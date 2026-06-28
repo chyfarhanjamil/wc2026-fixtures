@@ -171,7 +171,7 @@ const App = (() => {
     document.querySelectorAll('#timePanel  .filter-chip').forEach((c,i) => c.classList.toggle('active',i===0));
 
     if (mode === 'calendar') Calendar.render();
-    if (mode === 'bracket')  Bracket.render();
+    if (mode === 'bracket')  { Bracket.render(); if (typeof Simulator !== 'undefined') Simulator.init(); if (typeof ClashFinder !== 'undefined') ClashFinder.init(); }
     if (mode === 'stats')    Stats.render();
     if (mode !== 'calendar' && mode !== 'bracket' && mode !== 'stats')
       TeamGrid.render({ mode, activeGroup, activeTimeSlot });

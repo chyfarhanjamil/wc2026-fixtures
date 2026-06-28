@@ -21,6 +21,10 @@ const Calendar = (() => {
     if (f.teams.some(t => t.toLowerCase().includes(q) || I18n.teamName(t).toLowerCase().includes(q))) return true;
     if (f.isKO) {
       if (f.home.toLowerCase().includes(q) || f.away.toLowerCase().includes(q)) return true;
+      // Search through homeDesc/awayDesc — these contain all possible team names
+      // e.g. "Winner Group C\n(Brazil, Morocco, Haiti, Scotland)"
+      if (f.homeDesc && f.homeDesc.toLowerCase().includes(q)) return true;
+      if (f.awayDesc && f.awayDesc.toLowerCase().includes(q)) return true;
       const r = Resolver.resolve(f);
       if (r.homeResolved && r.home.toLowerCase().includes(q)) return true;
       if (r.awayResolved && r.away.toLowerCase().includes(q)) return true;
