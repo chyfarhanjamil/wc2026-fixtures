@@ -67,76 +67,81 @@ const ClashFinder = (() => {
         const slot = slots[side];
         if(!slot.groups.includes(grp)) continue;
         const r32id = parseInt(mid);
-        const r16entry = Object.entries(R16).find(([,m])=>m.h===r32id||m.a===r32id);
-        if(!r16entry) continue;
-        const r16id = parseInt(r16entry[0]);
-        const qfentry = Object.entries(QF).find(([,m])=>m.h===r16id||m.a===r16id);
-        if(!qfentry) continue;
-        const qfid = parseInt(qfentry[0]);
-        const sfentry = Object.entries(SF).find(([,m])=>m.h===qfid||m.a===qfid);
-        if(!sfentry) continue;
-        const sfid = parseInt(sfentry[0]);
-
-        // Opponent description in R32
-        const oppSlot = side==='home' ? slots.away : slots.home;
+        const r16e = Object.entries(R16).find(([,m])=>m.h===r32id||m.a===r32id); if(!r16e) continue;
+        const r16id = parseInt(r16e[0]);
+        const qfe  = Object.entries(QF).find(([,m])=>m.h===r16id||m.a===r16id);  if(!qfe)  continue;
+        const qfid = parseInt(qfe[0]);
+        const sfe  = Object.entries(SF).find(([,m])=>m.h===qfid||m.a===qfid);    if(!sfe)  continue;
+        const sfid = parseInt(sfe[0]);
+        const oppSlot = side==='home'?slots.away:slots.home;
         const oppDesc = oppSlot.pos==='3rd'
-          ? `best 3rd-place from Groups ${oppSlot.groups.join('/')}`
+          ? `best 3rd from Groups ${oppSlot.groups.join('/')}`
           : oppSlot.groups.length===1
             ? `${oppSlot.pos}-place from Group ${oppSlot.groups[0]}`
             : `${oppSlot.pos}-place from Groups ${oppSlot.groups.join('/')}`;
-
         const posLabel = slot.pos==='3rd'
           ? `finish 3rd in Group ${grp} (as top-8 3rd-place)`
           : `finish ${slot.pos} in Group ${grp}`;
-
-        paths.push({
-          pos: slot.pos, posLabel,
-          r32: r32id, r32date: slots.date, r32venue: slots.venue, r32opp: oppDesc,
-          r16: r16id, r16date: R16[r16id].date, r16venue: R16[r16id].venue,
-          qf:  qfid,  qfdate:  QF[qfid].date,   qfvenue:  QF[qfid].venue,
-          sf:  sfid,  sfdate:  SF[sfid].date,    sfvenue:  SF[sfid].venue,
-          final: 104,
+        paths.push({pos:slot.pos, posLabel, grp,
+          r32:r32id, r32d:slots.date, r32v:slots.venue, r32opp:oppDesc,
+          r16:r16id, r16d:R16[r16id].date, r16v:R16[r16id].venue,
+          qf:qfid,   qfd:QF[qfid].date,   qfv:QF[qfid].venue,
+          sf:sfid,   sfd:SF[sfid].date,    sfv:SF[sfid].venue,
+          final:104
         });
       }
     }
     return paths;
   }
 
-  /* ── Find clashes: for each stage, collect ALL distinct pos-combo clashes ── */
+  /*
+   * KEY FIX: findClashes now groups by SHARED MATCH ID.
+   * For each shared match, it collects only the paths from each team
+   * that actually lead INTO that specific match — not all paths to that stage.
+   *
+   * e.g. for SF#101: Brazil must come via QF#97, Argentina via QF#98.
+   * We only show Brazil's paths where qf=97, and Argentina's paths where qf=98.
+   * The unique finishing positions from those filtered paths are what we display.
+   */
   function findClashes(tA, tB) {
     const pA = allPaths(tA), pB = allPaths(tB);
     const stages = ['r32','r16','qf','sf','final'];
     const result = {};
 
     stages.forEach(stage => {
-      const seen = new Set();
-      const clashes = [];
-      pA.forEach(pathA => {
-        pB.forEach(pathB => {
-          if(pathA[stage] !== pathB[stage]) return;
-          // Deduplicate by posA+posB combo
-          const key = `${pathA.posLabel}||${pathB.posLabel}`;
-          if(seen.has(key)) return;
-          seen.add(key);
-          clashes.push({ pathA, pathB, matchId: pathA[stage] });
+      // Collect all (pathA, pathB) pairs that share the same match at this stage
+      const byMatch = {}; // matchId -> { pathsA: Set<posLabel>, pathsB: Set<posLabel> }
+      pA.forEach(a => {
+        pB.forEach(b => {
+          if(a[stage] !== b[stage]) return;
+          const mid = a[stage];
+          if(!byMatch[mid]) byMatch[mid] = { matchId:mid, seenA:new Set(), seenB:new Set(), pathsA:[], pathsB:[] };
+          // Only add unique posLabel paths
+          if(!byMatch[mid].seenA.has(a.posLabel)){ byMatch[mid].seenA.add(a.posLabel); byMatch[mid].pathsA.push(a); }
+          if(!byMatch[mid].seenB.has(b.posLabel)){ byMatch[mid].seenB.add(b.posLabel); byMatch[mid].pathsB.push(b); }
         });
       });
-      if(clashes.length) result[stage] = clashes;
+
+      const clashList = Object.values(byMatch);
+      if(clashList.length) result[stage] = clashList;
     });
     return result;
   }
 
-  /* ── Build human-readable condition string from a path up to a stage ── */
+  /* ── Build condition string for a path up to a given stage ── */
   function condStr(p, stage) {
-    if(stage==='r32')  return `Must ${p.posLabel}`;
-    if(stage==='r16')  return `Must ${p.posLabel} → Win R32 on ${p.r32date} (${p.r32venue}) vs the ${p.r32opp}`;
-    if(stage==='qf')   return `Must ${p.posLabel} → Win R32 on ${p.r32date} vs ${p.r32opp} → Win R16 on ${p.r16date} (${p.r16venue})`;
-    if(stage==='sf')   return `Must ${p.posLabel} → Win R32 on ${p.r32date} → Win R16 on ${p.r16date} → Win QF on ${p.qfdate} (${p.qfvenue})`;
-    if(stage==='final')return `Must ${p.posLabel} → Win R32 on ${p.r32date} → Win R16 on ${p.r16date} → Win QF on ${p.qfdate} → Win SF on ${p.sfdate} (${p.sfvenue})`;
+    const gf = p.pos==='3rd'
+      ? `Finish 3rd in Group ${p.grp} (must be top-8 3rd-place)`
+      : `Finish ${p.pos} in Group ${p.grp}`;
+    if(stage==='r32')   return gf;
+    if(stage==='r16')   return `${gf} → Win R32 on ${p.r32d} (${p.r32v}) vs the ${p.r32opp}`;
+    if(stage==='qf')    return `${gf} → Win R32 on ${p.r32d} vs ${p.r32opp} → Win R16 on ${p.r16d} (${p.r16v})`;
+    if(stage==='sf')    return `${gf} → Win R32 on ${p.r32d} → Win R16 on ${p.r16d} → Win QF on ${p.qfd} (${p.qfv})`;
+    if(stage==='final') return `${gf} → Win R32 on ${p.r32d} → Win R16 on ${p.r16d} → Win QF on ${p.qfd} → Win SF on ${p.sfd} (${p.sfv})`;
     return '';
   }
 
-  /* ── Render ── */
+  /* ── Render result card ── */
   const STAGE_META = {
     r32:   {label:'Round of 32',   icon:'⚽', color:'blue',   hero:'They could meet in the very <strong>first knockout match</strong> — Round of 32!'},
     r16:   {label:'Round of 16',   icon:'🎯', color:'teal',   hero:'Their earliest possible clash is the <strong>Round of 16</strong>.'},
@@ -164,48 +169,37 @@ const ClashFinder = (() => {
     let stagesHtml = '';
     stageKeys.forEach(key => {
       const meta = STAGE_META[key];
-      const list = clashes[key];
-      if(!list) return;
+      const matchList = clashes[key];
+      if(!matchList) return;
 
       const isEarliest = key === earliestKey;
-      const dotCls   = isEarliest ? 'cf-dot--clash' : 'cf-dot--poss';
-      const nameCls  = isEarliest ? 'cf-sname--clash' : 'cf-sname--poss';
-      const condCls  = isEarliest ? 'cf-cond--clash' : 'cf-cond--poss';
-      const badge    = isEarliest
+      const dotCls  = isEarliest ? 'cf-dot--clash' : 'cf-dot--poss';
+      const nameCls = isEarliest ? 'cf-sname--clash' : 'cf-sname--poss';
+      const condCls = isEarliest ? 'cf-cond--clash' : 'cf-cond--poss';
+      const badge   = isEarliest
         ? `<span class="cf-stage-badge cf-badge--earliest">⚡ Earliest</span>`
         : `<span class="cf-stage-badge cf-badge--possible">Also possible</span>`;
 
-      // Group clashes by unique posA values to show concisely
-      const aOptions = [...new Set(list.map(c=>c.pathA.posLabel))];
-      const bOptions = [...new Set(list.map(c=>c.pathB.posLabel))];
-
-      // Build condition rows — show each team's possible finishing positions
-      // and for each, the full chain
+      // For each shared match, show what EACH team needs to reach THAT specific match
       let condHtml = '';
-
-      // Team A rows
-      const aUnique = [];
-      const seenA = new Set();
-      list.forEach(c => { if(!seenA.has(c.pathA.posLabel)){seenA.add(c.pathA.posLabel);aUnique.push(c.pathA);} });
-      const bUnique = [];
-      const seenB = new Set();
-      list.forEach(c => { if(!seenB.has(c.pathB.posLabel)){seenB.add(c.pathB.posLabel);bUnique.push(c.pathB);} });
-
-      condHtml += `<div class="cf-team-block">`;
-      condHtml += `<div class="cf-team-block-flag">${fA}</div><div class="cf-team-block-body">`;
-      condHtml += `<div class="cf-team-name-line"><strong>${tA}</strong> can reach this stage by:</div>`;
-      aUnique.forEach(p => {
-        condHtml += `<div class="cf-option-row">• <em>${condStr(p, key)}</em></div>`;
+      matchList.forEach(clash => {
+        // Team A block — only paths that lead to THIS specific match
+        condHtml += `<div class="cf-tblk">
+          <div class="cf-tblk-flag">${fA}</div>
+          <div class="cf-tblk-body">
+            <div class="cf-tblk-name"><strong>${tA}</strong> must:</div>
+            ${clash.pathsA.map(p=>`<div class="cf-opt">• <em>${condStr(p,key)}</em></div>`).join('')}
+          </div>
+        </div>`;
+        // Team B block
+        condHtml += `<div class="cf-tblk">
+          <div class="cf-tblk-flag">${fB}</div>
+          <div class="cf-tblk-body">
+            <div class="cf-tblk-name"><strong>${tB}</strong> must:</div>
+            ${clash.pathsB.map(p=>`<div class="cf-opt">• <em>${condStr(p,key)}</em></div>`).join('')}
+          </div>
+        </div>`;
       });
-      condHtml += `</div></div>`;
-
-      condHtml += `<div class="cf-team-block">`;
-      condHtml += `<div class="cf-team-block-flag">${fB}</div><div class="cf-team-block-body">`;
-      condHtml += `<div class="cf-team-name-line"><strong>${tB}</strong> can reach this stage by:</div>`;
-      bUnique.forEach(p => {
-        condHtml += `<div class="cf-option-row">• <em>${condStr(p, key)}</em></div>`;
-      });
-      condHtml += `</div></div>`;
 
       stagesHtml += `
         <div class="cf-stage-row">
@@ -231,6 +225,7 @@ const ClashFinder = (() => {
     </div>`;
   }
 
+  /* ── Bracket section ── */
   function renderBracketSection(tA, tB) {
     const fA=flag(tA), fB=flag(tB);
     const pathsA=allPaths(tA), pathsB=allPaths(tB);
@@ -248,11 +243,10 @@ const ClashFinder = (() => {
 
     allR32.forEach(mid => {
       const m = R32S[mid]; if(!m) return;
-      const aInH=m.home.groups.some(g=>GT[g].includes(tA)),aInA=m.away.groups.some(g=>GT[g].includes(tA));
-      const bInH=m.home.groups.some(g=>GT[g].includes(tB)),bInA=m.away.groups.some(g=>GT[g].includes(tB));
+      const aInH=m.home.groups.some(g=>GT[g].includes(tA)), aInA=m.away.groups.some(g=>GT[g].includes(tA));
+      const bInH=m.home.groups.some(g=>GT[g].includes(tB)), bInA=m.away.groups.some(g=>GT[g].includes(tB));
       const isClash=(aInH||aInA)&&(bInH||bInA);
-      const paA = pathsA.find(p=>p.r32===mid);
-      const paB = pathsB.find(p=>p.r32===mid);
+      const paA=pathsA.find(p=>p.r32===mid), paB=pathsB.find(p=>p.r32===mid);
       const hd=aInH?`${fA} ${tA}`:bInH?`${fB} ${tB}`:m.home.pos==='3rd'?`Best 3rd (${m.home.groups.join('/')})`:`${m.home.pos} Group ${m.home.groups[0]}`;
       const ad=aInA?`${fA} ${tA}`:bInA?`${fB} ${tB}`:m.away.pos==='3rd'?`Best 3rd (${m.away.groups.join('/')})`:`${m.away.pos} Group ${m.away.groups[0]}`;
       const hq=aInH&&paA?`📌 ${paA.posLabel}`:bInH&&paB?`📌 ${paB.posLabel}`:'';
@@ -269,7 +263,7 @@ const ClashFinder = (() => {
     html += `</div></div></div></div>`;
 
     const host=document.getElementById('cf-bracket-host');
-    if(host){ host.innerHTML=html; host.style.display='block'; }
+    if(host){ host.innerHTML=html; }
     const lbl=document.getElementById('cf-bracket-label');
     if(lbl) lbl.textContent=`${tA} & ${tB} — Possible Paths`;
   }
@@ -300,7 +294,7 @@ const ClashFinder = (() => {
   }
 
   function reset(){
-    const a=document.getElementById('cf-team-a'),b=document.getElementById('cf-team-b');
+    const a=document.getElementById('cf-team-a'), b=document.getElementById('cf-team-b');
     if(a)a.value=''; if(b)b.value='';
     const out=document.getElementById('cf-result');
     if(out)out.innerHTML='<div class="cf-hint">⬆️ Select two teams above.</div>';
@@ -312,7 +306,7 @@ const ClashFinder = (() => {
     const host=document.getElementById('cfContainer'); if(!host)return;
     host.innerHTML=`
       <div class="cf-inner">
-        <div class="cf-tagline">Pick any two teams — see the <strong>exact group-stage finish</strong> each team needs, for <strong>every possible route</strong> they could meet.</div>
+        <div class="cf-tagline">Pick any two teams — see the <strong>exact group-stage finish</strong> each team needs to meet at every possible knockout round.</div>
         <div class="cf-selectors">
           <div class="cf-selector-group">
             <label class="cf-label">🟦 Team A</label>
@@ -360,7 +354,7 @@ const ClashFinder = (() => {
     const bc=document.getElementById('bracketContent'); if(!bc)return;
     const tb=document.createElement('div');
     tb.className='cf-toggle-bar';
-    tb.innerHTML=`<button id="cfToggleBtn" class="cf-toggle-btn" onclick="ClashFinder.toggle()">🔍 Team Clash Finder</button><span class="cf-toggle-hint">Find when two teams could meet — with every possible qualifying route</span>`;
+    tb.innerHTML=`<button id="cfToggleBtn" class="cf-toggle-btn" onclick="ClashFinder.toggle()">🔍 Team Clash Finder</button><span class="cf-toggle-hint">Find when two teams could meet — with exact qualifying conditions</span>`;
     bc.parentElement.insertBefore(tb,bc);
     const panel=document.createElement('div');
     panel.id='cfPanel'; panel.className='cf-panel'; panel.style.display='none';
