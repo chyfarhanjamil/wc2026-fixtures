@@ -1,109 +1,249 @@
 /**
- * live.js — reads scores from /data/matches.json + /data/scorers.json
+ * live.js — scores from /data/matches.json + /data/today.json
  *
- * These two JSON files live inside YOUR OWN GitHub repo.
- * A GitHub Actions workflow updates them every 2 minutes by calling
- * football-data.org from GitHub's servers (no CORS, no restrictions).
+ * THREE layers work together so the live icon and scores appear
+ * as fast as possible:
  *
- * Your browser only ever fetches from YOUR OWN domain (same origin).
- * No external URLs. No proxies. No Cloudflare.
- * Works on every browser, every network, including restricted ones.
+ * Layer 1 — PHANTOM LIVE (instant, zero delay)
+ *   The browser knows every match kick-off time from data.js.
+ *   If the current UTC clock says a match should be in progress
+ *   (kick-off ≤ now < kick-off + 115 min), we immediately show
+ *   a 🔴 LIVE badge with a computed elapsed minute — no server
+ *   call needed.  This fires exactly at kick-off time.
+ *
+ * Layer 2 — TODAY.JSON (faster refresh, ~1-3 min behind)
+ *   /data/today.json is fetched from the GitHub repo. It only
+ *   contains today's matches so it's tiny and GitHub Pages CDN
+ *   serves it faster. Polled every 60 seconds during match hours.
+ *
+ * Layer 3 — MATCHES.JSON (authoritative, 1-5 min behind)
+ *   Full competition data. Polled every 2 min normally, every
+ *   60 s during a live match window.
+ *
+ * Why GitHub Actions still delays:
+ *   GitHub's free-tier cron scheduler queues jobs and during
+ *   peak load (World Cup match times) can delay them 5-15 min.
+ *   Layer 1 compensates for this — the UI shows "LIVE" immediately
+ *   at kick-off and Layer 2/3 fill in the actual score as soon as
+ *   GitHub's worker runs.
  */
 'use strict';
 
 const Live = (() => {
 
   // ── CONFIG ────────────────────────────────────────────────────────────
-  const POLL_MS           = 120000; // re-read JSON every 2 min
-  const CACHE_KEY_MATCHES = 'wc2026_v2_matches';
-  const CACHE_KEY_SCORERS = 'wc2026_v2_scorers';
+  const POLL_NORMAL_MS  = 120000;  // 2 min off-peak
+  const POLL_LIVE_MS    =  60000;  // 1 min during match window
+  const MATCH_DURATION  =    115;  // minutes: 90 + HT + stoppage buffer
+  const CACHE_KEY_M     = 'wc2026_v3_matches';
+  const CACHE_KEY_S     = 'wc2026_v3_scorers';
 
   // ── STATE ─────────────────────────────────────────────────────────────
-  let liveData   = {};
-  let topScorers = [];
-  let listeners  = [];
-  const hasKey   = true;
+  let liveData    = {};   // fixtureId → payload
+  let topScorers  = [];
+  let listeners   = [];
+  let _pollTimer  = null;
+  let _tickTimer  = null; // 1-second tick for minute counter
 
-  // ── CACHE (localStorage) ──────────────────────────────────────────────
-  // Saves results after every fetch so they survive page reloads instantly.
+  // ── CACHE ─────────────────────────────────────────────────────────────
   function _saveCache() {
     try {
-      localStorage.setItem(CACHE_KEY_MATCHES, JSON.stringify(liveData));
-      localStorage.setItem(CACHE_KEY_SCORERS, JSON.stringify(topScorers));
+      localStorage.setItem(CACHE_KEY_M, JSON.stringify(liveData));
+      localStorage.setItem(CACHE_KEY_S, JSON.stringify(topScorers));
     } catch(e) {}
   }
 
   function _loadCache() {
     try {
-      const m = localStorage.getItem(CACHE_KEY_MATCHES);
-      const s = localStorage.getItem(CACHE_KEY_SCORERS);
+      const m = localStorage.getItem(CACHE_KEY_M);
+      const s = localStorage.getItem(CACHE_KEY_S);
       if (m) liveData   = JSON.parse(m);
       if (s) topScorers = JSON.parse(s);
       return Object.keys(liveData).length > 0;
     } catch(e) { return false; }
   }
 
+  // ── UTC INDEX ─────────────────────────────────────────────────────────
+  let _utcIndex = null;
+
+  function _buildUtcIndex() {
+    _utcIndex = new Map();
+    WC2026.FIXTURES.forEach(f => {
+      if (!f.utc) return;
+      const key = f.utc.slice(0, 16);
+      if (!_utcIndex.has(key)) _utcIndex.set(key, []);
+      _utcIndex.get(key).push(f);
+    });
+  }
+
+  // ── PHANTOM LIVE ──────────────────────────────────────────────────────
+  // Returns true if any fixture is currently in its expected live window
+  // based purely on system clock — no server data needed.
+  function _phantomLiveFixtures() {
+    const nowMs = Date.now();
+    return WC2026.FIXTURES.filter(f => {
+      if (!f.utc) return false;
+      const kickoff = new Date(f.utc).getTime();
+      const end     = kickoff + MATCH_DURATION * 60000;
+      return nowMs >= kickoff && nowMs < end;
+    });
+  }
+
+  // Compute elapsed minutes from kick-off (accounting for HT break)
+  function _computeMinute(utc) {
+    const elapsed = Math.floor((Date.now() - new Date(utc).getTime()) / 60000);
+    if (elapsed <= 45) return elapsed;
+    if (elapsed <= 60) return 45;   // in HT break → show 45
+    const secondHalf = elapsed - 60;
+    return Math.min(45 + secondHalf, 90);
+  }
+
+  // Inject phantom data for fixtures that should be live right now
+  // but haven't been confirmed by the API yet (or API is delayed).
+  function _applyPhantomLive() {
+    const phantoms = _phantomLiveFixtures();
+    let changed = false;
+    phantoms.forEach(f => {
+      const existing = liveData[`local_${f.id}`];
+      // Only inject phantom if we have no real data yet, OR if the real
+      // data still says TIMED/SCHEDULED (GitHub Actions hasn't run yet)
+      if (!existing || existing.status === 'TIMED' || existing.status === 'SCHEDULED') {
+        liveData[`local_${f.id}`] = {
+          status:    'IN_PLAY',
+          scoreHome: existing?.scoreHome ?? null,  // keep score if we have it
+          scoreAway: existing?.scoreAway ?? null,
+          htHome:    existing?.htHome    ?? null,
+          htAway:    existing?.htAway    ?? null,
+          minute:    _computeMinute(f.utc),
+          phantom:   true,   // flag so we know this isn't from the API
+          scorers:   existing?.scorers || [],
+        };
+        changed = true;
+      } else if (existing && existing.phantom) {
+        // Update computed minute on existing phantom
+        existing.minute = _computeMinute(f.utc);
+        changed = true;
+      }
+    });
+
+    // Also clear phantom entries for matches that have now ended
+    // (past the MATCH_DURATION window) but API hasn't confirmed FT yet
+    Object.keys(liveData).forEach(key => {
+      const d = liveData[key];
+      if (!d.phantom) return;
+      const id = parseInt(key.replace('local_', ''));
+      const f  = WC2026.FIXTURES.find(x => x.id === id);
+      if (!f) return;
+      const elapsed = (Date.now() - new Date(f.utc).getTime()) / 60000;
+      if (elapsed > MATCH_DURATION) {
+        // Past the expected end — remove phantom so it doesn't show stale LIVE badge
+        delete liveData[key];
+        changed = true;
+      }
+    });
+
+    return changed;
+  }
+
   // ── INIT ──────────────────────────────────────────────────────────────
   function init() {
     _buildUtcIndex();
 
-    // Load cache first — previous results show instantly with zero delay
+    // Layer 1: show cached results instantly
     const hadCache = _loadCache();
-    if (hadCache) { _notify(); }
-    // Always show "fetching" banner so user knows a refresh is happening
-    _setBanner('loading');
+    if (hadCache) _notify();
 
-    // Then fetch fresh data in the background
+    // Layer 1: phantom live — if a match is on right now, show LIVE immediately
+    if (_applyPhantomLive()) _notify();
+
+    // Start 1-second tick to keep computed minute counter moving
+    _startTick();
+
+    // Layer 2 & 3: fetch fresh data
+    _setBanner('loading');
     fetchAll()
       .then(() => {
-        _setBanner(Object.keys(liveData).length > 0 ? 'live' : 'waiting');
-        // Keep polling every 2 min to pick up new GitHub Actions commits
-        setInterval(() => { _setBanner('loading'); fetchAll()
-          .then(() => _setBanner(Object.keys(liveData).length > 0 ? 'live' : 'waiting'))
-          .catch(err => _setBanner('cached_error', err.message));
-        }, POLL_MS);
+        _updateBanner();
+        _scheduleNextPoll();
       })
       .catch(err => {
         console.error('[Live] fetch failed:', err);
         _setBanner(hadCache ? 'cached_error' : 'error', err.message);
+        _scheduleNextPoll();
       });
   }
 
-  // ── FETCH from same-domain JSON files ─────────────────────────────────
-  // ?t=timestamp busts the browser cache so we always get the latest file.
+  // ── TICK (1-second interval for live minute counter) ───────────────────
+  function _startTick() {
+    if (_tickTimer) return;
+    _tickTimer = setInterval(() => {
+      // Update phantom minutes and re-notify if anything is live
+      const changed = _applyPhantomLive();
+      if (changed) _notify();
+    }, 15000); // every 15 seconds is smooth enough for a minute counter
+  }
+
+  // ── SMART POLLING ─────────────────────────────────────────────────────
+  function _scheduleNextPoll() {
+    if (_pollTimer) clearTimeout(_pollTimer);
+    const phantoms = _phantomLiveFixtures();
+    const hasLive  = phantoms.length > 0 ||
+      Object.values(liveData).some(d => d.status === 'IN_PLAY' || d.status === 'PAUSED');
+    const delay = hasLive ? POLL_LIVE_MS : POLL_NORMAL_MS;
+
+    _pollTimer = setTimeout(() => {
+      _setBanner('loading');
+      fetchAll()
+        .then(() => { _updateBanner(); _scheduleNextPoll(); })
+        .catch(err => {
+          _setBanner('cached_error', err.message);
+          _scheduleNextPoll();
+        });
+    }, delay);
+  }
+
+  // ── FETCH ─────────────────────────────────────────────────────────────
   async function fetchAll() {
     const t = Date.now();
-    const [matchRes, scorerRes] = await Promise.allSettled([
+
+    // Fetch today.json first (fast, small file — just today's matches)
+    // then fall back to full matches.json
+    const [todayRes, matchRes, scorerRes] = await Promise.allSettled([
+      fetch(`data/today.json?t=${t}`)
+        .then(r => { if (!r.ok) throw new Error(`today ${r.status}`); return r.json(); }),
       fetch(`data/matches.json?t=${t}`)
         .then(r => { if (!r.ok) throw new Error(`matches ${r.status}`); return r.json(); }),
       fetch(`data/scorers.json?t=${t}`)
         .then(r => { if (!r.ok) throw new Error(`scorers ${r.status}`); return r.json(); }),
     ]);
 
-    // If BOTH fail (files don't exist yet), throw so caller knows
-    if (matchRes.status === 'rejected' && scorerRes.status === 'rejected')
+    if (matchRes.status === 'rejected' && scorerRes.status === 'rejected' && todayRes.status === 'rejected')
       throw new Error('JSON files not found — has the GitHub Action run yet?');
 
+    // Ingest full matches first, then today's data on top (today is more up-to-date)
     if (matchRes.status  === 'fulfilled') _ingestMatches(matchRes.value.matches  || []);
+    if (todayRes.status  === 'fulfilled') _ingestMatches(todayRes.value.matches  || []);
     if (scorerRes.status === 'fulfilled') _ingestScorers(scorerRes.value.scorers || []);
-    else console.warn('[Live] scorers not ready yet');
+
+    // Apply phantom live on top of whatever we got
+    _applyPhantomLive();
 
     _saveCache();
     _notify();
   }
 
-  // ── CANON MAP — API name → data.js name ──────────────────────────────
+  // ── CANON MAP ─────────────────────────────────────────────────────────
   const CANON_MAP = {
     'mexico':'Mexico','south africa':'South Africa',
     'korea republic':'Korea Republic','republic of korea':'Korea Republic','south korea':'Korea Republic',
     'czechia':'Czechia','czech republic':'Czechia',
     'canada':'Canada',
     'bosnia and herzegovina':'Bosnia & Herzegovina',
-    'bosnia & herzegovina':'Bosnia & Herzegovina',
     'bosnia-herzegovina':'Bosnia & Herzegovina',
+    'bosnia & herzegovina':'Bosnia & Herzegovina',
     'qatar':'Qatar','switzerland':'Switzerland',
     'brazil':'Brazil','morocco':'Morocco','haiti':'Haiti','scotland':'Scotland',
-    'united states':'USA','united states of america':'USA','usa':'USA','us':'USA',
+    'united states':'USA','united states of america':'USA','usa':'USA',
     'paraguay':'Paraguay','australia':'Australia',
     'türkiye':'Türkiye','turkiye':'Türkiye','turkey':'Türkiye',
     'germany':'Germany',
@@ -115,22 +255,18 @@ const Live = (() => {
     'japan':'Japan','tunisia':'Tunisia','sweden':'Sweden',
     'belgium':'Belgium','egypt':'Egypt','iran':'Iran','new zealand':'New Zealand',
     'spain':'Spain','cabo verde':'Cabo Verde','cape verde':'Cabo Verde',
-    'saudi arabia':'Saudi Arabia','ksa':'Saudi Arabia',
+    'saudi arabia':'Saudi Arabia',
     'uruguay':'Uruguay','france':'France','senegal':'Senegal',
     'iraq':'Iraq','norway':'Norway',
     'argentina':'Argentina','algeria':'Algeria','austria':'Austria','jordan':'Jordan',
     'portugal':'Portugal',
     'congo dr':'Congo DR','dr congo':'Congo DR',
     'democratic republic of congo':'Congo DR',
-    'democratic republic of the congo':'Congo DR','congo, dr':'Congo DR',
+    'democratic republic of the congo':'Congo DR',
     'uzbekistan':'Uzbekistan','colombia':'Colombia',
     'england':'England','croatia':'Croatia','ghana':'Ghana','panama':'Panama',
-    // Extra aliases seen in the API responses
-    'cape verde islands':'Cabo Verde','cape verde':'Cabo Verde',
-    'bosnia-herzegovina':'Bosnia & Herzegovina',
-    'bosnia and herzegovina':'Bosnia & Herzegovina',
-    'south korea':'Korea Republic','republic of korea':'Korea Republic',
-    'congo, dr':'Congo DR','dr. congo':'Congo DR',
+    'cape verde islands':'Cabo Verde',
+    'dr. congo':'Congo DR','congo, dr':'Congo DR',
   };
 
   function _canon(name) {
@@ -144,60 +280,50 @@ const Live = (() => {
     return name.trim();
   }
 
-  // ── UTC INDEX — kick-off time → fixture lookup ────────────────────────
-  let _utcIndex = null;
-
-  function _buildUtcIndex() {
-    _utcIndex = new Map();
-    WC2026.FIXTURES.forEach(f => {
-      if (!f.utc) return;
-      const key = f.utc.slice(0, 16);
-      if (!_utcIndex.has(key)) _utcIndex.set(key, []);
-      _utcIndex.get(key).push(f);
-    });
-  }
-
   // ── INGEST MATCHES ────────────────────────────────────────────────────
   function _ingestMatches(matches) {
     if (!_utcIndex) _buildUtcIndex();
 
     matches.forEach(m => {
-      const ft = m.score?.fullTime || {};
-      const ht = m.score?.halfTime || {};
-
+      const ft = m.score?.fullTime  || {};
+      const ht = m.score?.halfTime  || {};
       const hc     = _canon(m.homeTeam?.name || '');
       const ac     = _canon(m.awayTeam?.name || '');
       const utcKey = (m.utcDate || '').slice(0, 16);
 
-      // Helper: build payload, swapping scores if API home/away is reversed vs fixture
+      // NOTE: The free football-data.org tier (TIER_ONE) does NOT return:
+      //   m.minute  — always undefined
+      //   m.goals   — always undefined
+      // We compute the minute ourselves via _computeMinute() in phantom live.
+
       function _makePayload(fixtureHome) {
         const reversed = fixtureHome && _canon(fixtureHome) !== hc;
+        const status   = m.status || 'TIMED';
+
+        // If API says IN_PLAY, compute elapsed minute from kick-off time
+        let minute = null;
+        if ((status === 'IN_PLAY' || status === 'PAUSED') && m.utcDate) {
+          minute = _computeMinute(m.utcDate);
+        }
+
         return {
-          status:    m.status,
+          status,
           scoreHome: reversed ? (ft.away ?? null) : (ft.home ?? null),
           scoreAway: reversed ? (ft.home ?? null) : (ft.away ?? null),
           htHome:    reversed ? (ht.away ?? null) : (ht.home ?? null),
           htAway:    reversed ? (ht.home ?? null) : (ht.away ?? null),
-          minute:    m.minute || null,
-          homeApi:   m.homeTeam?.name || '',
-          awayApi:   m.awayTeam?.name || '',
-          scorers: (m.goals || []).map(g => ({
-            team:   _canon(g.team?.name || ''),
-            player: g.scorer?.name     || 'Own Goal',
-            minute: g.minute,
-            type:   g.type             || 'REGULAR',
-          })),
+          minute,
+          phantom:   false,   // this is real API data
+          scorers:   [],      // free tier has no goals feed; cleared intentionally
         };
       }
 
-      // Route 1: match by UTC kick-off time (works for ALL stages)
+      // Route 1: match by UTC kick-off time
       const timeMatches = _utcIndex.get(utcKey) || [];
       if (timeMatches.length === 1) {
         liveData[`local_${timeMatches[0].id}`] = _makePayload(timeMatches[0].home); return;
       }
       if (timeMatches.length > 1) {
-        // Same kick-off slot (simultaneous matches) — break tie by team name.
-        // The API sometimes swaps home/away vs our fixture list, so check both orderings.
         const hit = timeMatches.find(
           f => (_canon(f.home) === hc && _canon(f.away) === ac) ||
                (_canon(f.home) === ac && _canon(f.away) === hc)
@@ -205,8 +331,7 @@ const Live = (() => {
         if (hit) { liveData[`local_${hit.id}`] = _makePayload(hit.home); return; }
       }
 
-      // Route 2: team name fallback (group stage only)
-      // Also tolerates home/away reversal from the API.
+      // Route 2: team name fallback (group stage)
       WC2026.FIXTURES.forEach(f => {
         if (f.stage !== 'group') return;
         if ((_canon(f.home) === hc && _canon(f.away) === ac) ||
@@ -235,60 +360,72 @@ const Live = (() => {
   }
 
   // ── BANNER ────────────────────────────────────────────────────────────
+  function _updateBanner() {
+    const hasLiveMatch = Object.values(liveData)
+      .some(d => d.status === 'IN_PLAY' || d.status === 'PAUSED');
+    if (hasLiveMatch)
+      _setBanner('live');
+    else if (Object.keys(liveData).length > 0)
+      _setBanner('waiting');
+    else
+      _setBanner('waiting');
+  }
+
   function _setBanner(type, detail) {
     const el = document.getElementById('liveBanner');
     if (!el) return;
     const msgs = {
       loading:      '⏳ Fetching latest scores…',
-      cached:       '📦 Showing saved results — refreshing…',
       cached_error: '⚠️ Could not refresh — showing last saved results.',
-      waiting:      '📅 Live — scores will appear when matches kick off.',
-      live:         '🟢 Live data loaded — updates every 2 min.',
+      waiting:      '📅 Live scores will appear automatically when matches kick off.',
+      live:         '🟢 Match in progress — scores update every 60 seconds.',
       error:        '⚠️ Score files not ready yet — please refresh in a moment.',
     };
-    // Clear any pending hide timer
     if (el._hideTimer) { clearTimeout(el._hideTimer); el._hideTimer = null; }
     el.className = `live-banner live-banner--${type}`;
-    el.style.opacity = '1';
+    el.style.opacity   = '1';
     el.style.transition = '';
     el.innerHTML = `<span>${msgs[type] || ''}${detail
       ? ` <code style="opacity:.7;font-size:11px">(${detail})</code>` : ''}</span>`;
     el.style.display = 'block';
-    // Auto-hide with fade for success/info states; keep error states visible longer
-    const hideDelay = type === 'loading' ? null :
-                      ['error','cached_error'].includes(type) ? 10000 : 4000;
+
+    const hideDelay = type === 'loading' ? null
+      : ['error','cached_error'].includes(type) ? 12000 : 5000;
     if (hideDelay !== null) {
       el._hideTimer = setTimeout(() => {
         el.style.transition = 'opacity 0.6s ease';
-        el.style.opacity = '0';
+        el.style.opacity    = '0';
         setTimeout(() => { el.style.display = 'none'; el.style.opacity = '1'; }, 650);
       }, hideDelay);
     }
   }
 
-  // ── PUBLIC API (unchanged — no other file needs to change) ────────────
+  // ── PUBLIC API ────────────────────────────────────────────────────────
   function onUpdate(fn) { listeners.push(fn); }
   function forFixture(f) { return liveData[`local_${f.id}`] || null; }
 
   function scoreLabel(f) {
     const d = forFixture(f);
-    if (!d || d.scoreHome === null) return null;
+    // Only show score if we actually have numbers (not null from phantom)
+    if (!d || d.scoreHome === null || d.scoreAway === null) return null;
     return `${d.scoreHome}–${d.scoreAway}`;
   }
 
   function statusBadge(f) {
     const d = forFixture(f);
     if (!d) return '';
-    if (d.status === 'IN_PLAY')
-      return `<span class="badge badge--live">🔴 LIVE${d.minute ? ' '+d.minute+"'" : ''}</span>`;
-    if (d.status === 'PAUSED')
-      return `<span class="badge badge--ht">⏸ HT</span>`;
-    if (d.status === 'FINISHED')
-      return `<span class="badge badge--ft">FT</span>`;
+    if (d.status === 'IN_PLAY') {
+      const minStr = d.minute ? ` ${d.minute}'` : '';
+      const phantomNote = d.phantom ? ' <span style="font-size:9px;opacity:.7">(approx)</span>' : '';
+      return `<span class="badge badge--live">🔴 LIVE${minStr}</span>${phantomNote}`;
+    }
+    if (d.status === 'PAUSED')   return `<span class="badge badge--ht">⏸ HT</span>`;
+    if (d.status === 'FINISHED') return `<span class="badge badge--ft">FT</span>`;
     return '';
   }
 
   function scorersHtml(f) {
+    // Free tier: no goals data — return empty string silently
     const d = forFixture(f);
     if (!d || !d.scorers?.length) return '';
     return `<div class="scorers-row">${
@@ -304,6 +441,6 @@ const Live = (() => {
   return {
     init, onUpdate,
     forFixture, scoreLabel, statusBadge, scorersHtml,
-    hasKey, getTopScorers,
+    hasKey: true, getTopScorers,
   };
 })();

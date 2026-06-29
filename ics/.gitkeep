@@ -1,0 +1,3 @@
+# This folder is populated automatically by GitHub Actions (generate-ics.yml).
+# It runs after every score fetch and writes one .ics file per team.
+# Do not edit files here manually.

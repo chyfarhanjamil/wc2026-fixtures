@@ -2,8 +2,16 @@ name: Fetch WC2026 Scores
 
 on:
   schedule:
-    - cron: '*/2 * * * *'   # runs every 2 minutes, 24/7
-  workflow_dispatch:          # lets you trigger it manually from GitHub
+    # During match hours (BD time 6 PM–5 AM = UTC 12:00–23:00)
+    # Run every 1 minute. GitHub may still delay by a few minutes
+    # during peak load, but this minimises the gap.
+    - cron: '* 12,13,14,15,16,17,18,19,20,21,22,23 * 6,7 *'   # match hours June-July UTC
+    # Off-peak: every 5 minutes (saves Actions minutes)
+    - cron: '*/5 0,1,2,3,4,5,6,7,8,9,10,11 * 6,7 *'
+  workflow_dispatch:   # manual trigger anytime
+  push:
+    paths:
+      - '.github/workflows/fetch-scores.yml'   # re-run if workflow edited
 
 jobs:
   fetch:
@@ -24,6 +32,19 @@ jobs:
             -H "X-Auth-Token: 72f45df7ce7b4991ac9ebd929bf4c53d" \
             "https://api.football-data.org/v4/competitions/2000/matches?season=2026" \
             -o data/matches.json
+          echo "Fetch done at $(date -u)"
+          # Show live/in-play matches for debugging
+          python3 -c "
+          import json, sys
+          try:
+              d = json.load(open('data/matches.json'))
+              live = [m for m in d.get('matches',[]) if m.get('status') in ('IN_PLAY','PAUSED')]
+              print(f'Live matches: {len(live)}')
+              for m in live:
+                  print(f'  {m[\"homeTeam\"][\"name\"]} vs {m[\"awayTeam\"][\"name\"]} | {m[\"status\"]}')
+          except Exception as e:
+              print('Parse error:', e, file=sys.stderr)
+          "
 
       - name: Fetch top scorers from football-data.org
         run: |
@@ -32,10 +53,19 @@ jobs:
             "https://api.football-data.org/v4/competitions/2000/scorers?season=2026&limit=100" \
             -o data/scorers.json
 
+      - name: Fetch TODAY's live match details (faster live update)
+        run: |
+          TODAY=$(date -u +%Y-%m-%d)
+          curl -s \
+            -H "X-Auth-Token: 72f45df7ce7b4991ac9ebd929bf4c53d" \
+            "https://api.football-data.org/v4/competitions/2000/matches?dateFrom=${TODAY}&dateTo=${TODAY}" \
+            -o data/today.json || echo "{}" > data/today.json
+          echo "Today's matches fetched"
+
       - name: Commit and push updated JSON files
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/matches.json data/scorers.json
+          git add data/matches.json data/scorers.json data/today.json
           git diff --staged --quiet || git commit -m "score update $(date -u +'%Y-%m-%d %H:%M UTC')"
           git push

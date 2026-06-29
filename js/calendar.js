@@ -18,17 +18,20 @@ const Calendar = (() => {
   // "Brazil" finds a knockout match even before the placeholder text changes.
   function _matchesQuery(f, q) {
     if (!q) return true;
-    if (f.teams.some(t => t.toLowerCase().includes(q) || I18n.teamName(t).toLowerCase().includes(q))) return true;
-    if (f.isKO) {
-      if (f.home.toLowerCase().includes(q) || f.away.toLowerCase().includes(q)) return true;
-      // Search through homeDesc/awayDesc — these contain all possible team names
-      // e.g. "Winner Group C\n(Brazil, Morocco, Haiti, Scotland)"
-      if (f.homeDesc && f.homeDesc.toLowerCase().includes(q)) return true;
-      if (f.awayDesc && f.awayDesc.toLowerCase().includes(q)) return true;
-      const r = Resolver.resolve(f);
-      if (r.homeResolved && r.home.toLowerCase().includes(q)) return true;
-      if (r.awayResolved && r.away.toLowerCase().includes(q)) return true;
+
+    if (!f.isKO) {
+      // Group stage — match either team name directly only
+      return f.teams.some(t =>
+        t.toLowerCase().includes(q) || I18n.teamName(t).toLowerCase().includes(q)
+      );
     }
+
+    // KO stage — ONLY match on Resolver-confirmed real team names.
+    // Never match on homeDesc/awayDesc pool text like "(Brazil, Morocco...)"
+    // because that would show unrelated KO fixtures before Brazil qualifies.
+    const r = Resolver.resolve(f);
+    if (r.homeResolved && (r.home.toLowerCase().includes(q) || I18n.teamName(r.home).toLowerCase().includes(q))) return true;
+    if (r.awayResolved && (r.away.toLowerCase().includes(q) || I18n.teamName(r.away).toLowerCase().includes(q))) return true;
     return false;
   }
 

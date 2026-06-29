@@ -1,0 +1,34 @@
+name: Generate ICS Calendar Files
+
+on:
+  workflow_run:
+    workflows: ["Fetch WC2026 Scores"]
+    types: [completed]
+  workflow_dispatch:
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Generate ICS files
+        run: node scripts/generate-ics.js
+
+      - name: Commit and push ICS files
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add ics/
+          git diff --staged --quiet || git commit -m "ics update $(date -u +'%Y-%m-%d %H:%M UTC')"
+          git push
