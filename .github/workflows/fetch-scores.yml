@@ -56,7 +56,7 @@ jobs:
         run: |
           curl -s \
             -H "X-Auth-Token: 72f45df7ce7b4991ac9ebd929bf4c53d" \
-            "https://api.football-data.org/v4/competitions/2000/scorers?season=2026&limit=100" \
+            "https://api.football-data.org/v4/competitions/2000/scorers?season=2026&limit=400" \
             -o data/scorers.json
 
       - name: Show summary

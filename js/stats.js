@@ -106,6 +106,40 @@ const Stats = (() => {
 
   /* ── Render helpers ───────────────────────────────────────────────────── */
 
+  // Map football-data.org API team names → our canonical display names
+  const _API_TEAM_CANON = {
+    'united states':          'USA',
+    'united states of america':'USA',
+    'south korea':            'Korea Republic',
+    'republic of korea':      'Korea Republic',
+    'bosnia-herzegovina':     'Bosnia & Herzegovina',
+    'bosnia and herzegovina': 'Bosnia & Herzegovina',
+    'cape verde islands':     'Cabo Verde',
+    'cape verde':             'Cabo Verde',
+    'dr congo':               'Congo DR',
+    'congo, dr':              'Congo DR',
+    'democratic republic of congo': 'Congo DR',
+    'ivory coast':            'Ivory Coast',
+    "cote d'ivoire":          'Ivory Coast',
+    "côte d'ivoire":          'Ivory Coast',
+    'türkiye':                'Türkiye',
+    'turkiye':                'Türkiye',
+    'turkey':                 'Türkiye',
+  };
+
+  function _resolveApiTeam(raw) {
+    if (!raw) return '';
+    const key = raw.toLowerCase().trim();
+    if (_API_TEAM_CANON[key]) return _API_TEAM_CANON[key];
+    // Try exact match first
+    const exact = WC2026.teams.find(t => t.toLowerCase() === key);
+    if (exact) return exact;
+    // Loose first-word match as fallback
+    return WC2026.teams.find(t =>
+      t.toLowerCase().includes(key.split(' ')[0])
+    ) || raw;
+  }
+
   function _flag(teamName) { return WC2026.FLAGS[teamName] || '🏳️'; }
 
   function _teamDisplay(teamName) { return I18n.teamName(teamName); }
@@ -134,13 +168,10 @@ const Stats = (() => {
     if (apiScorers.length > 0) {
       // Map API scorer objects to our row format, resolving team name
       rows = apiScorers.map(s => {
-        const teamDisplay = WC2026.teams.find(t =>
-          t.toLowerCase() === s.teamRaw.toLowerCase() ||
-          t.toLowerCase().includes(s.teamRaw.toLowerCase().split(' ')[0])
-        ) || s.teamRaw;
+        const teamDisplay = _resolveApiTeam(s.teamRaw);
         return {
           name:         s.name,
-          team:         s.teamRaw,
+          team:         teamDisplay,   // use resolved name so filter works
           teamDisplay:  teamDisplay,
           goals:        s.goals,
           pens:         s.penalties,
@@ -215,11 +246,8 @@ const Stats = (() => {
       rows = apiScorers
         .filter(s => s.assists > 0)
         .map(s => {
-          const teamDisplay = WC2026.teams.find(t =>
-            t.toLowerCase() === s.teamRaw.toLowerCase() ||
-            t.toLowerCase().includes(s.teamRaw.toLowerCase().split(' ')[0])
-          ) || s.teamRaw;
-          return { name: s.name, team: s.teamRaw, teamDisplay, assists: s.assists, matchCount: s.playedMatches };
+          const teamDisplay = _resolveApiTeam(s.teamRaw);
+          return { name: s.name, team: teamDisplay, teamDisplay, assists: s.assists, matchCount: s.playedMatches };
         })
         .sort((a,b) => b.assists - a.assists);
     } else {
