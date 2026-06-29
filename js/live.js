@@ -35,8 +35,8 @@ const Live = (() => {
   const POLL_NORMAL_MS  = 120000;  // 2 min off-peak
   const POLL_LIVE_MS    =  60000;  // 1 min during match window
   const MATCH_DURATION  =    115;  // minutes: 90 + HT + stoppage buffer
-  const CACHE_KEY_M     = 'wc2026_v3_matches';
-  const CACHE_KEY_S     = 'wc2026_v3_scorers';
+  const CACHE_KEY_M     = 'wc2026_v4_matches';
+  const CACHE_KEY_S     = 'wc2026_v4_scorers';
 
   // ── STATE ─────────────────────────────────────────────────────────────
   let liveData    = {};   // fixtureId → payload
@@ -148,6 +148,12 @@ const Live = (() => {
   // ── INIT ──────────────────────────────────────────────────────────────
   function init() {
     _buildUtcIndex();
+    // Clear stale cache from previous versions
+    ['wc2026_v1_matches','wc2026_v1_scorers',
+     'wc2026_v2_matches','wc2026_v2_scorers',
+     'wc2026_v3_matches','wc2026_v3_scorers'].forEach(k => {
+      try { localStorage.removeItem(k); } catch(e) {}
+    });
 
     // Layer 1: show cached results instantly
     const hadCache = _loadCache();
@@ -296,11 +302,14 @@ const Live = (() => {
       //   m.goals   — always undefined
       // We compute the minute ourselves via _computeMinute() in phantom live.
 
+      // Guard: if the API entry has no teams (KO match not yet determined),
+      // don't store anything — returning null skips the storage below.
+      if (!hc && !ac) return null;
+
       function _makePayload(fixtureHome) {
         const reversed = fixtureHome && _canon(fixtureHome) !== hc;
         const status   = m.status || 'TIMED';
 
-        // If API says IN_PLAY, compute elapsed minute from kick-off time
         let minute = null;
         if ((status === 'IN_PLAY' || status === 'PAUSED') && m.utcDate) {
           minute = _computeMinute(m.utcDate);
@@ -313,30 +322,34 @@ const Live = (() => {
           htHome:    reversed ? (ht.away ?? null) : (ht.home ?? null),
           htAway:    reversed ? (ht.home ?? null) : (ht.away ?? null),
           minute,
-          phantom:   false,   // this is real API data
-          scorers:   [],      // free tier has no goals feed; cleared intentionally
+          phantom:   false,
+          scorers:   [],
         };
       }
 
       // Route 1: match by UTC kick-off time
       const timeMatches = _utcIndex.get(utcKey) || [];
       if (timeMatches.length === 1) {
-        liveData[`local_${timeMatches[0].id}`] = _makePayload(timeMatches[0].home); return;
+        const p = _makePayload(timeMatches[0].home);
+        if (p) liveData[`local_${timeMatches[0].id}`] = p;
+        return;
       }
       if (timeMatches.length > 1) {
         const hit = timeMatches.find(
           f => (_canon(f.home) === hc && _canon(f.away) === ac) ||
                (_canon(f.home) === ac && _canon(f.away) === hc)
         );
-        if (hit) { liveData[`local_${hit.id}`] = _makePayload(hit.home); return; }
+        if (hit) { const p = _makePayload(hit.home); if (p) liveData[`local_${hit.id}`] = p; return; }
       }
 
       // Route 2: team name fallback (group stage)
       WC2026.FIXTURES.forEach(f => {
         if (f.stage !== 'group') return;
         if ((_canon(f.home) === hc && _canon(f.away) === ac) ||
-            (_canon(f.home) === ac && _canon(f.away) === hc))
-          liveData[`local_${f.id}`] = _makePayload(f.home);
+            (_canon(f.home) === ac && _canon(f.away) === hc)) {
+          const p = _makePayload(f.home);
+          if (p) liveData[`local_${f.id}`] = p;
+        }
       });
     });
   }

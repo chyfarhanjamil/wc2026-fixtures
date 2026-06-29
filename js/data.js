@@ -84,7 +84,7 @@ const WC2026 = (() => {
     {id:9,  stage:'group', group:'E', home:'Germany',              away:'Curaçao',              utc:'2026-06-14T17:00:00Z', venue:'Houston'},
     {id:10, stage:'group', group:'F', home:'Netherlands',           away:'Japan',                utc:'2026-06-14T20:00:00Z', venue:'Dallas'},
     {id:11, stage:'group', group:'E', home:'Ivory Coast',          away:'Ecuador',              utc:'2026-06-14T23:00:00Z', venue:'Philadelphia'},
-    {id:12, stage:'group', group:'F', home:'Tunisia',              away:'Sweden',               utc:'2026-06-15T02:00:00Z', venue:'Monterrey'},
+    {id:12, stage:'group', group:'F', home:'Sweden',               away:'Tunisia',              utc:'2026-06-15T02:00:00Z', venue:'Monterrey'},
 
     // June 15
     {id:13, stage:'group', group:'H', home:'Spain',                away:'Cabo Verde',           utc:'2026-06-15T16:00:00Z', venue:'Atlanta'},
@@ -112,9 +112,9 @@ const WC2026 = (() => {
 
     // June 19
     {id:29, stage:'group', group:'D', home:'USA',                  away:'Australia',            utc:'2026-06-19T19:00:00Z', venue:'Seattle'},
-    {id:30, stage:'group', group:'C', home:'Scotland',             away:'Morocco',              utc:'2026-06-19T19:00:00Z', venue:'Boston'},
-    {id:31, stage:'group', group:'C', home:'Brazil',               away:'Haiti',                utc:'2026-06-20T01:00:00Z', venue:'Philadelphia'},
-    {id:32, stage:'group', group:'D', home:'Türkiye',              away:'Paraguay',             utc:'2026-06-20T04:00:00Z', venue:'San Francisco'},
+    {id:30, stage:'group', group:'C', home:'Scotland',             away:'Morocco',              utc:'2026-06-19T22:00:00Z', venue:'Boston'},
+    {id:31, stage:'group', group:'C', home:'Brazil',               away:'Haiti',                utc:'2026-06-20T00:30:00Z', venue:'Philadelphia'},
+    {id:32, stage:'group', group:'D', home:'Türkiye',              away:'Paraguay',             utc:'2026-06-20T03:00:00Z', venue:'San Francisco'},
 
     // June 20
     {id:33, stage:'group', group:'F', home:'Netherlands',           away:'Sweden',               utc:'2026-06-20T17:00:00Z', venue:'Houston'},
@@ -145,8 +145,8 @@ const WC2026 = (() => {
     {id:50, stage:'group', group:'B', home:'Bosnia & Herzegovina', away:'Qatar',                utc:'2026-06-24T19:00:00Z', venue:'Seattle'},
     {id:51, stage:'group', group:'C', home:'Brazil',               away:'Scotland',             utc:'2026-06-24T22:00:00Z', venue:'Miami'},
     {id:52, stage:'group', group:'C', home:'Morocco',              away:'Haiti',                utc:'2026-06-24T22:00:00Z', venue:'Atlanta'},
-    {id:53, stage:'group', group:'A', home:'Mexico',               away:'Czechia',              utc:'2026-06-25T01:00:00Z', venue:'Mexico City'},
-    {id:54, stage:'group', group:'A', home:'Korea Republic',        away:'South Africa',         utc:'2026-06-25T01:00:00Z', venue:'Monterrey'},
+    {id:53, stage:'group', group:'A', home:'Czechia',              away:'Mexico',               utc:'2026-06-25T01:00:00Z', venue:'Mexico City'},
+    {id:54, stage:'group', group:'A', home:'South Africa',         away:'Korea Republic',        utc:'2026-06-25T01:00:00Z', venue:'Monterrey'},
 
     // June 25
     {id:55, stage:'group', group:'E', home:'Ecuador',              away:'Germany',              utc:'2026-06-25T20:00:00Z', venue:'New York/NJ'},
