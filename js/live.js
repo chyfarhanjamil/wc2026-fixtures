@@ -291,30 +291,29 @@ const Live = (() => {
     if (!_utcIndex) _buildUtcIndex();
 
     matches.forEach(m => {
+      const home = (m.homeTeam || {}).name || '';
+      const away = (m.awayTeam || {}).name || '';
+
+      // CRITICAL: If API has no team names for this entry (KO match not yet
+      // determined), skip it entirely. Never store a null-team entry because
+      // it can corrupt the display of other matches via UTC collision.
+      if (!home && !away) return;
+
       const ft = m.score?.fullTime  || {};
       const ht = m.score?.halfTime  || {};
-      const hc     = _canon(m.homeTeam?.name || '');
-      const ac     = _canon(m.awayTeam?.name || '');
+      const hc     = _canon(home);
+      const ac     = _canon(away);
       const utcKey = (m.utcDate || '').slice(0, 16);
-
-      // NOTE: The free football-data.org tier (TIER_ONE) does NOT return:
-      //   m.minute  — always undefined
-      //   m.goals   — always undefined
-      // We compute the minute ourselves via _computeMinute() in phantom live.
-
-      // Guard: if the API entry has no teams (KO match not yet determined),
-      // don't store anything — returning null skips the storage below.
-      if (!hc && !ac) return null;
+      const apiStage = m.stage || '';
+      const isApiGroup = apiStage === 'GROUP_STAGE';
 
       function _makePayload(fixtureHome) {
         const reversed = fixtureHome && _canon(fixtureHome) !== hc;
         const status   = m.status || 'TIMED';
-
         let minute = null;
         if ((status === 'IN_PLAY' || status === 'PAUSED') && m.utcDate) {
           minute = _computeMinute(m.utcDate);
         }
-
         return {
           status,
           scoreHome: reversed ? (ft.away ?? null) : (ft.home ?? null),
@@ -322,27 +321,43 @@ const Live = (() => {
           htHome:    reversed ? (ht.away ?? null) : (ht.home ?? null),
           htAway:    reversed ? (ht.home ?? null) : (ht.away ?? null),
           minute,
-          phantom:   false,
-          scorers:   [],
+          phantom: false,
+          scorers: [],
         };
       }
 
-      // Route 1: match by UTC kick-off time
+      // ── Route 1: Match by UTC kick-off time ───────────────────────────
       const timeMatches = _utcIndex.get(utcKey) || [];
+
       if (timeMatches.length === 1) {
-        const p = _makePayload(timeMatches[0].home);
-        if (p) liveData[`local_${timeMatches[0].id}`] = p;
+        const f = timeMatches[0];
+        // SAFETY: don't store a group-stage API result into a KO fixture slot
+        if (isApiGroup && f.isKO) return;
+        const p = _makePayload(f.home);
+        if (p) liveData[`local_${f.id}`] = p;
         return;
       }
+
       if (timeMatches.length > 1) {
+        // Simultaneous matches — break tie by team name
         const hit = timeMatches.find(
           f => (_canon(f.home) === hc && _canon(f.away) === ac) ||
                (_canon(f.home) === ac && _canon(f.away) === hc)
         );
-        if (hit) { const p = _makePayload(hit.home); if (p) liveData[`local_${hit.id}`] = p; return; }
+        if (hit) {
+          if (isApiGroup && hit.isKO) return;
+          const p = _makePayload(hit.home);
+          if (p) liveData[`local_${hit.id}`] = p;
+          return;
+        }
+        // UTC matched but team names don't match any fixture — skip to Route 2
       }
 
-      // Route 2: team name fallback (group stage)
+      // ── Route 2: Team-name fallback ───────────────────────────────────
+      // ONLY for group-stage API matches → ONLY match against group-stage fixtures.
+      // This prevents a group result from being stored against a KO fixture ID.
+      if (!isApiGroup) return;
+
       WC2026.FIXTURES.forEach(f => {
         if (f.stage !== 'group') return;
         if ((_canon(f.home) === hc && _canon(f.away) === ac) ||

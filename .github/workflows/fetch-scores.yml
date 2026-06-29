@@ -2,16 +2,8 @@ name: Fetch WC2026 Scores
 
 on:
   schedule:
-    # During match hours (BD time 6 PM–5 AM = UTC 12:00–23:00)
-    # Run every 1 minute. GitHub may still delay by a few minutes
-    # during peak load, but this minimises the gap.
-    - cron: '* 12,13,14,15,16,17,18,19,20,21,22,23 * 6,7 *'   # match hours June-July UTC
-    # Off-peak: every 5 minutes (saves Actions minutes)
-    - cron: '*/5 0,1,2,3,4,5,6,7,8,9,10,11 * 6,7 *'
-  workflow_dispatch:   # manual trigger anytime
-  push:
-    paths:
-      - '.github/workflows/fetch-scores.yml'   # re-run if workflow edited
+    - cron: '*/2 * * * *'   # every 2 minutes all day
+  workflow_dispatch:
 
 jobs:
   fetch:
@@ -23,49 +15,70 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create data folder if missing
+      - name: Create data folder
         run: mkdir -p data
 
-      - name: Fetch matches from football-data.org
+      - name: Fetch ALL matches (full competition)
         run: |
-          curl -s \
+          HTTP=$(curl -s -w "%{http_code}" \
             -H "X-Auth-Token: 72f45df7ce7b4991ac9ebd929bf4c53d" \
             "https://api.football-data.org/v4/competitions/2000/matches?season=2026" \
-            -o data/matches.json
-          echo "Fetch done at $(date -u)"
-          # Show live/in-play matches for debugging
-          python3 -c "
-          import json, sys
-          try:
-              d = json.load(open('data/matches.json'))
-              live = [m for m in d.get('matches',[]) if m.get('status') in ('IN_PLAY','PAUSED')]
-              print(f'Live matches: {len(live)}')
-              for m in live:
-                  print(f'  {m[\"homeTeam\"][\"name\"]} vs {m[\"awayTeam\"][\"name\"]} | {m[\"status\"]}')
-          except Exception as e:
-              print('Parse error:', e, file=sys.stderr)
-          "
+            -o data/matches_raw.json)
+          echo "HTTP status: $HTTP"
+          if [ "$HTTP" = "200" ]; then
+            cp data/matches_raw.json data/matches.json
+            echo "matches.json updated"
+          else
+            echo "ERROR: API returned $HTTP"
+            cat data/matches_raw.json
+          fi
 
-      - name: Fetch top scorers from football-data.org
+      - name: Fetch TODAY matches separately (fresher KO data)
+        run: |
+          TODAY=$(date -u +%Y-%m-%d)
+          TOMORROW=$(date -u -d '+1 day' +%Y-%m-%d 2>/dev/null || date -u -v+1d +%Y-%m-%d)
+          echo "Fetching $TODAY and $TOMORROW"
+          HTTP=$(curl -s -w "%{http_code}" \
+            -H "X-Auth-Token: 72f45df7ce7b4991ac9ebd929bf4c53d" \
+            "https://api.football-data.org/v4/competitions/2000/matches?dateFrom=${TODAY}&dateTo=${TOMORROW}" \
+            -o data/today.json)
+          echo "today.json HTTP: $HTTP"
+          cat data/today.json | python3 -c "
+          import json,sys
+          d=json.load(sys.stdin)
+          for m in d.get('matches',[]):
+              home=(m.get('homeTeam') or {}).get('name','TBD')
+              away=(m.get('awayTeam') or {}).get('name','TBD')
+              print(f'  {m[\"utcDate\"]} {m[\"status\"]} [{home}] vs [{away}] score={m[\"score\"][\"fullTime\"]}')
+          " || echo "Parse error"
+
+      - name: Fetch top scorers
         run: |
           curl -s \
             -H "X-Auth-Token: 72f45df7ce7b4991ac9ebd929bf4c53d" \
             "https://api.football-data.org/v4/competitions/2000/scorers?season=2026&limit=100" \
             -o data/scorers.json
 
-      - name: Fetch TODAY's live match details (faster live update)
+      - name: Show summary
         run: |
-          TODAY=$(date -u +%Y-%m-%d)
-          curl -s \
-            -H "X-Auth-Token: 72f45df7ce7b4991ac9ebd929bf4c53d" \
-            "https://api.football-data.org/v4/competitions/2000/matches?dateFrom=${TODAY}&dateTo=${TODAY}" \
-            -o data/today.json || echo "{}" > data/today.json
-          echo "Today's matches fetched"
+          python3 -c "
+          import json
+          d = json.load(open('data/matches.json'))
+          matches = d.get('matches', [])
+          finished = [m for m in matches if m['score']['fullTime']['home'] is not None]
+          live = [m for m in matches if m.get('status') in ('IN_PLAY','PAUSED')]
+          ko_done = [m for m in finished if m.get('stage') not in ('GROUP_STAGE',)]
+          print(f'Total: {len(matches)} | Finished: {len(finished)} | Live: {len(live)} | KO finished: {len(ko_done)}')
+          for m in ko_done[:5]:
+              home=(m.get('homeTeam') or {}).get('name','?')
+              away=(m.get('awayTeam') or {}).get('name','?')
+              print(f'  KO: {home} {m[\"score\"][\"fullTime\"][\"home\"]}-{m[\"score\"][\"fullTime\"][\"away\"]} {away}')
+          "
 
-      - name: Commit and push updated JSON files
+      - name: Commit and push
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/matches.json data/scorers.json data/today.json
-          git diff --staged --quiet || git commit -m "score update $(date -u +'%Y-%m-%d %H:%M UTC')"
+          git diff --staged --quiet || git commit -m "scores $(date -u +'%Y-%m-%d %H:%M UTC')"
           git push
