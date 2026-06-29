@@ -35,8 +35,8 @@ const Live = (() => {
   const POLL_NORMAL_MS  = 120000;  // 2 min off-peak
   const POLL_LIVE_MS    =  60000;  // 1 min during match window
   const MATCH_DURATION  =    115;  // minutes: 90 + HT + stoppage buffer
-  const CACHE_KEY_M     = 'wc2026_v4_matches';
-  const CACHE_KEY_S     = 'wc2026_v4_scorers';
+  const CACHE_KEY_M     = 'wc2026_v5_matches';
+  const CACHE_KEY_S     = 'wc2026_v5_scorers';
 
   // ── STATE ─────────────────────────────────────────────────────────────
   let liveData    = {};   // fixtureId → payload
@@ -151,7 +151,7 @@ const Live = (() => {
     // Clear stale cache from previous versions
     ['wc2026_v1_matches','wc2026_v1_scorers',
      'wc2026_v2_matches','wc2026_v2_scorers',
-     'wc2026_v3_matches','wc2026_v3_scorers'].forEach(k => {
+     'wc2026_v3_matches','wc2026_v3_scorers','wc2026_v4_matches','wc2026_v4_scorers'].forEach(k => {
       try { localStorage.removeItem(k); } catch(e) {}
     });
 
@@ -308,7 +308,19 @@ const Live = (() => {
       const isApiGroup = apiStage === 'GROUP_STAGE';
 
       function _makePayload(fixtureHome) {
-        const reversed = fixtureHome && _canon(fixtureHome) !== hc;
+        // For KO fixtures, fixtureHome is a placeholder like '2nd Group A'
+        // which never matches the API team name like 'South Africa'.
+        // So we use the API winner field instead to determine if scores
+        // need reversing — or simply trust API home/away order directly.
+        // The API home team IS the home team; we never need to reverse for KO.
+        // For group stage: check canon name match as before.
+        const isKOFixture = !fixtureHome || fixtureHome.includes('Group') ||
+          fixtureHome.includes('Winner') || fixtureHome.includes('Best') ||
+          fixtureHome.includes('Loser') || fixtureHome.includes('Match');
+        const reversed = isKOFixture
+          ? false  // API home/away is authoritative for KO; never reverse
+          : (fixtureHome && _canon(fixtureHome) !== hc);
+
         const status   = m.status || 'TIMED';
         let minute = null;
         if ((status === 'IN_PLAY' || status === 'PAUSED') && m.utcDate) {
