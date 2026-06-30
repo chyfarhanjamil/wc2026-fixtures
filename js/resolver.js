@@ -638,16 +638,27 @@ const Resolver = (() => {
 
   // Returns the resolved *display name* (already i18n-translated team name)
   // of the winner/loser of a given match id, or null if not finished yet.
+  //
+  // IMPORTANT: this uses ld.winnerSide (sourced from the API's authoritative
+  // score.winner field) rather than comparing scoreHome/scoreAway directly.
+  // Knockout matches that are level after 90 minutes get decided by extra
+  // time and/or penalties — fullTime stays level (e.g. 1-1) even though
+  // there IS a winner. Comparing raw scores would return null forever and
+  // the bracket would never advance that team to the next round. The API's
+  // winner field is correct in all cases (regular time, ET, or penalties).
   function _winnerOf(matchId) {
     const r = _result(matchId);
     if (!r) return null;
     const { fixture: f, ld } = r;
     const resolvedF = resolve(f); // recursive — winner of an R16 game needs its own slots resolved first
+
+    if (ld.winnerSide === 'home') return resolvedF.home;
+    if (ld.winnerSide === 'away') return resolvedF.away;
+
+    // Fallback for older cached data without winnerSide: compare scores
+    // (only correct for matches decided in regular time).
     if (ld.scoreHome > ld.scoreAway) return resolvedF.home;
     if (ld.scoreAway > ld.scoreHome) return resolvedF.away;
-    // Knockout draws shouldn't happen post-ET/penalties, but guard anyway:
-    // some feeds report penalty winners via a separate field; if truly
-    // unresolvable, leave it for now rather than guessing.
     return null;
   }
 
@@ -656,6 +667,10 @@ const Resolver = (() => {
     if (!r) return null;
     const { fixture: f, ld } = r;
     const resolvedF = resolve(f);
+
+    if (ld.winnerSide === 'home') return resolvedF.away;
+    if (ld.winnerSide === 'away') return resolvedF.home;
+
     if (ld.scoreHome > ld.scoreAway) return resolvedF.away;
     if (ld.scoreAway > ld.scoreHome) return resolvedF.home;
     return null;

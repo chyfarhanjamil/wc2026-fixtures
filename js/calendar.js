@@ -169,9 +169,7 @@ const Calendar = (() => {
       ? (resolved.awayResolved ? resolved.away : resolved.away.replace(/\b([A-L])\b/g, l => I18n.groupLetter(l)))
       : (f.displayAway || f.away);
 
-    const scoreOrVs = score
-      ? `<span class="match-score ${ld && ld.status==='IN_PLAY' ? 'score--live':''}">${score}</span>`
-      : `<span class="day-match-vs-sep">${I18n.t('vs')}</span>`;
+    const scoreOrVs = Live.scoreBlockHtml(f, I18n.t('vs'));
 
     const stagePill = f.isKO
       ? `<span class="day-stage-pill day-stage-pill--ko">${f.label}</span>`
@@ -202,6 +200,7 @@ const Calendar = (() => {
           <span class="hl hl-right">${dAway}</span>
         </div>
         ${koHint}
+        ${Live.scorerDropdownHtml(f)}
         <div class="day-match-foot">
           <span class="day-match-time-pill">${f.tzTime}</span>
         </div>

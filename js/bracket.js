@@ -107,9 +107,7 @@ const Bracket = (() => {
       const awayDesc = resolved.awayDesc || '';
       const isPending = !score && f.stage !== 'group';
 
-      const scoreOrVs = score
-        ? `<span class="ko-score ${ld && ld.status==='IN_PLAY' ? 'score--live':''}">${score}</span>`
-        : `<span class="ko-vs">${I18n.t('vs')}</span>`;
+      const scoreOrVs = Live.scoreBlockHtml(f, I18n.t('vs'));
 
       html += `
         <div class="ko-match-card${stage === 'final' ? ' ko-match--final' : ''}">
@@ -128,6 +126,7 @@ const Bracket = (() => {
               ${awayDesc && isPending ? `<span class="ko-team-hint">${awayDesc.replace(/\n/g,'<br>')}</span>` : ''}
             </div>
           </div>
+          ${Live.scorerDropdownHtml(f)}
         </div>`;
     });
 

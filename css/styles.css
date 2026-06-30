@@ -2261,3 +2261,126 @@ mark { background: rgba(201,168,76,.25); color: var(--gold-light); border-radius
   background: #1e2d45;
   margin: 14px 0 10px;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   PENALTY / EXTRA-TIME SCORE BREAKDOWN
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.score-block {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  line-height: 1.1;
+}
+.score-tag {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .6px;
+  color: var(--muted);
+  background: rgba(255,255,255,.06);
+  border-radius: 4px;
+  padding: 1px 5px;
+  margin-left: 5px;
+  vertical-align: middle;
+  text-transform: uppercase;
+}
+.score-pens {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--gold-light, #d4af37);
+  letter-spacing: .3px;
+  white-space: nowrap;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   GOAL SCORER DROPDOWN
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.scorer-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: rgba(255,255,255,.03);
+  border: none;
+  border-top: 1px solid rgba(255,255,255,.06);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 9px 16px;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: background .15s ease, color .15s ease;
+  border-radius: 0 0 10px 10px;
+}
+.scorer-toggle:hover {
+  background: rgba(255,255,255,.06);
+  color: var(--text);
+}
+.scorer-toggle-arrow {
+  display: inline-block;
+  font-size: 10px;
+  transition: transform .2s ease;
+}
+.scorer-toggle-arrow--open { transform: rotate(180deg); }
+
+.scorer-dd-panel {
+  display: none;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 16px;
+  padding: 4px 16px 14px;
+  border-top: 1px solid rgba(255,255,255,.04);
+  animation: scorerFadeIn .18s ease;
+}
+@keyframes scorerFadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* The toggle button flips this class on its closest match-card ancestor;
+   only show the panel + rotate the arrow when that class is present. */
+.day-match-card.scorer-open .scorer-dd-panel,
+.ko-match-card.scorer-open .scorer-dd-panel,
+.match-row.scorer-open .scorer-dd-panel {
+  display: grid;
+}
+
+.scorer-dd-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.scorer-dd-col--right { align-items: flex-end; }
+.scorer-dd-col--right .scorer-dd-row { flex-direction: row-reverse; text-align: right; }
+
+.scorer-dd-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.4;
+}
+.scorer-dd-row--card { color: var(--muted); }
+.scorer-dd-icon { flex-shrink: 0; font-size: 12px; }
+.scorer-dd-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.scorer-dd-min  { flex-shrink: 0; color: var(--gold-light, #d4af37); font-weight: 600; font-size: 11px; }
+.scorer-dd-empty {
+  font-size: 11px;
+  color: var(--muted);
+  font-style: italic;
+  opacity: .6;
+}
+
+/* ── Mobile tuning ────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .scorer-toggle { font-size: 11.5px; padding: 8px 12px; }
+  .scorer-dd-panel { grid-template-columns: 1fr 1fr; gap: 4px 10px; padding: 4px 12px 12px; }
+  .scorer-dd-row { font-size: 11.5px; }
+  .scorer-dd-min { font-size: 10.5px; }
+  .score-pens { font-size: 10px; }
+  .score-tag { font-size: 8px; }
+}

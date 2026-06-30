@@ -63,9 +63,7 @@ const TeamGrid = (() => {
     const homeHl = f.home === team ? 'highlight' : '';
     const awayHl = f.away === team ? 'highlight' : '';
 
-    const scoreCell = score
-      ? `<span class="match-score ${ld && ld.status==='IN_PLAY' ? 'score--live':''}">${score}</span>`
-      : `<span class="match-sep">${I18n.t('vs')}</span>`;
+    const scoreCell = Live.scoreBlockHtml(f, I18n.t('vs'));
 
     return `<div class="match-row" data-slot="${f.slot}" data-group="${f.group}" data-id="${f.id}">
       <div class="match-date">${f.tzDate}</div>
@@ -76,7 +74,7 @@ const TeamGrid = (() => {
         ${badge}
       </div>
       <div class="match-time">${f.tzTime}</div>
-      ${scorers ? `<div class="match-scorers-wrap">${scorers}</div>` : ''}
+      ${Live.scorerDropdownHtml(f)}
     </div>`;
   }
 

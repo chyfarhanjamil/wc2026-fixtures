@@ -35,8 +35,8 @@ const Live = (() => {
   const POLL_NORMAL_MS  = 120000;  // 2 min off-peak
   const POLL_LIVE_MS    =  60000;  // 1 min during match window
   const MATCH_DURATION  =    115;  // minutes: 90 + HT + stoppage buffer
-  const CACHE_KEY_M     = 'wc2026_v5_matches';
-  const CACHE_KEY_S     = 'wc2026_v5_scorers';
+  const CACHE_KEY_M     = 'wc2026_v6_matches';
+  const CACHE_KEY_S     = 'wc2026_v6_scorers';
 
   // ── STATE ─────────────────────────────────────────────────────────────
   let liveData    = {};   // fixtureId → payload
@@ -151,7 +151,8 @@ const Live = (() => {
     // Clear stale cache from previous versions
     ['wc2026_v1_matches','wc2026_v1_scorers',
      'wc2026_v2_matches','wc2026_v2_scorers',
-     'wc2026_v3_matches','wc2026_v3_scorers','wc2026_v4_matches','wc2026_v4_scorers'].forEach(k => {
+     'wc2026_v3_matches','wc2026_v3_scorers','wc2026_v4_matches','wc2026_v4_scorers',
+     'wc2026_v5_matches','wc2026_v5_scorers'].forEach(k => {
       try { localStorage.removeItem(k); } catch(e) {}
     });
 
@@ -213,14 +214,18 @@ const Live = (() => {
     const t = Date.now();
 
     // Fetch today.json first (fast, small file — just today's matches)
-    // then fall back to full matches.json
-    const [todayRes, matchRes, scorerRes] = await Promise.allSettled([
+    // then fall back to full matches.json. match-details.json carries
+    // goal-scorer events for recently-finished matches (see scripts/
+    // fetch-match-details.py) so the UI can show a "who scored" dropdown.
+    const [todayRes, matchRes, scorerRes, detailRes] = await Promise.allSettled([
       fetch(`data/today.json?t=${t}`)
         .then(r => { if (!r.ok) throw new Error(`today ${r.status}`); return r.json(); }),
       fetch(`data/matches.json?t=${t}`)
         .then(r => { if (!r.ok) throw new Error(`matches ${r.status}`); return r.json(); }),
       fetch(`data/scorers.json?t=${t}`)
         .then(r => { if (!r.ok) throw new Error(`scorers ${r.status}`); return r.json(); }),
+      fetch(`data/match-details.json?t=${t}`)
+        .then(r => { if (!r.ok) throw new Error(`details ${r.status}`); return r.json(); }),
     ]);
 
     if (matchRes.status === 'rejected' && scorerRes.status === 'rejected' && todayRes.status === 'rejected')
@@ -230,6 +235,7 @@ const Live = (() => {
     if (matchRes.status  === 'fulfilled') _ingestMatches(matchRes.value.matches  || []);
     if (todayRes.status  === 'fulfilled') _ingestMatches(todayRes.value.matches  || []);
     if (scorerRes.status === 'fulfilled') _ingestScorers(scorerRes.value.scorers || []);
+    if (detailRes.status === 'fulfilled') _ingestMatchDetails(detailRes.value || {});
 
     // Apply phantom live on top of whatever we got
     _applyPhantomLive();
@@ -299,8 +305,12 @@ const Live = (() => {
       // it can corrupt the display of other matches via UTC collision.
       if (!home && !away) return;
 
-      const ft = m.score?.fullTime  || {};
-      const ht = m.score?.halfTime  || {};
+      const ft   = m.score?.fullTime  || {};
+      const ht   = m.score?.halfTime  || {};
+      const et   = m.score?.extraTime || {};
+      const pen  = m.score?.penalties || {};
+      const winnerField   = m.score?.winner   || null;   // 'HOME_TEAM' | 'AWAY_TEAM' | 'DRAW'
+      const durationField = m.score?.duration || 'REGULAR'; // 'REGULAR' | 'EXTRA_TIME' | 'PENALTY_SHOOTOUT'
       const hc     = _canon(home);
       const ac     = _canon(away);
       const utcKey = (m.utcDate || '').slice(0, 16);
@@ -310,15 +320,13 @@ const Live = (() => {
       function _makePayload(fixtureHome) {
         // For KO fixtures, fixtureHome is a placeholder like '2nd Group A'
         // which never matches the API team name like 'South Africa'.
-        // So we use the API winner field instead to determine if scores
-        // need reversing — or simply trust API home/away order directly.
-        // The API home team IS the home team; we never need to reverse for KO.
+        // The API home/away order is authoritative for KO; never reverse it.
         // For group stage: check canon name match as before.
         const isKOFixture = !fixtureHome || fixtureHome.includes('Group') ||
           fixtureHome.includes('Winner') || fixtureHome.includes('Best') ||
           fixtureHome.includes('Loser') || fixtureHome.includes('Match');
         const reversed = isKOFixture
-          ? false  // API home/away is authoritative for KO; never reverse
+          ? false
           : (fixtureHome && _canon(fixtureHome) !== hc);
 
         const status   = m.status || 'TIMED';
@@ -326,12 +334,30 @@ const Live = (() => {
         if ((status === 'IN_PLAY' || status === 'PAUSED') && m.utcDate) {
           minute = _computeMinute(m.utcDate);
         }
+
+        // Decisive winner: prefer the API's explicit winner field (this is
+        // correct even when fullTime/extraTime end level and the match was
+        // decided on penalties). Map HOME_TEAM/AWAY_TEAM to our home/away
+        // orientation, accounting for the reversed flag.
+        let winnerSide = null; // 'home' | 'away' | null
+        if (winnerField === 'HOME_TEAM') winnerSide = reversed ? 'away' : 'home';
+        else if (winnerField === 'AWAY_TEAM') winnerSide = reversed ? 'home' : 'away';
+        // DRAW (group stage) or null (not finished) → winnerSide stays null
+
         return {
           status,
           scoreHome: reversed ? (ft.away ?? null) : (ft.home ?? null),
           scoreAway: reversed ? (ft.home ?? null) : (ft.away ?? null),
           htHome:    reversed ? (ht.away ?? null) : (ht.home ?? null),
           htAway:    reversed ? (ht.home ?? null) : (ht.away ?? null),
+          // Extra time score (only present if the match went to ET)
+          etHome:    (et.home ?? null) !== null ? (reversed ? (et.away ?? null) : (et.home ?? null)) : null,
+          etAway:    (et.away ?? null) !== null ? (reversed ? (et.home ?? null) : (et.away ?? null)) : null,
+          // Penalty shootout score (only present if decided on penalties)
+          penHome:   (pen.home ?? null) !== null ? (reversed ? (pen.away ?? null) : (pen.home ?? null)) : null,
+          penAway:   (pen.away ?? null) !== null ? (reversed ? (pen.home ?? null) : (pen.away ?? null)) : null,
+          duration:  durationField,     // REGULAR | EXTRA_TIME | PENALTY_SHOOTOUT
+          winnerSide,                   // 'home' | 'away' | null — decisive winner incl. penalties
           minute,
           phantom: false,
           scorers: [],
@@ -394,6 +420,71 @@ const Live = (() => {
     }));
   }
 
+  // ── INGEST MATCH DETAILS (goal scorers, bookings) ───────────────────────
+  // matchDetails keyed by football-data.org match id (string) → trimmed
+  // payload written by scripts/fetch-match-details.py. We map each entry
+  // onto our own fixture ids via UTC time + team-name matching, same
+  // approach as _ingestMatches, then attach the scorer list to liveData
+  // so scorersHtml()/getScorers() can render them.
+  function _ingestMatchDetails(detailsByApiId) {
+    if (!_utcIndex) _buildUtcIndex();
+
+    Object.values(detailsByApiId).forEach(d => {
+      const home = d.homeTeam || '';
+      const away = d.awayTeam || '';
+      if (!home && !away) return;
+
+      const hc = _canon(home);
+      const ac = _canon(away);
+      const utcKey = (d.utcDate || '').slice(0, 16);
+      const timeMatches = _utcIndex.get(utcKey) || [];
+
+      let targetFixture = null;
+      if (timeMatches.length === 1) {
+        targetFixture = timeMatches[0];
+      } else if (timeMatches.length > 1) {
+        targetFixture = timeMatches.find(
+          f => (_canon(f.home) === hc && _canon(f.away) === ac) ||
+               (_canon(f.home) === ac && _canon(f.away) === hc)
+        ) || null;
+      }
+      if (!targetFixture) return;
+
+      const key = `local_${targetFixture.id}`;
+      const existing = liveData[key];
+      if (!existing) return; // no score data yet for this fixture — skip scorers too
+
+      // Determine if API's home/away needs flipping to match our fixture's
+      // home/away orientation (mirrors the logic in _ingestMatches).
+      const reversed = _canon(targetFixture.home) !== hc;
+
+      const scorers = (d.goals || []).map(g => {
+        const scoredForHome = (g.team?.name && _canon(g.team.name) === hc);
+        const isHomeSide = reversed ? !scoredForHome : scoredForHome;
+        return {
+          player: g.scorer?.name || g.player?.name || 'Unknown',
+          minute: g.minute ?? null,
+          type:   g.type || 'REGULAR',     // REGULAR | OWN_GOAL | PENALTY
+          side:   isHomeSide ? 'home' : 'away',
+          team:   g.team?.name || '',
+        };
+      }).sort((a, b) => (a.minute ?? 0) - (b.minute ?? 0));
+
+      const bookings = (d.bookings || []).map(b => {
+        const bookedForHome = (b.team?.name && _canon(b.team.name) === hc);
+        const isHomeSide = reversed ? !bookedForHome : bookedForHome;
+        return {
+          player: b.player?.name || 'Unknown',
+          minute: b.minute ?? null,
+          card:   b.card || 'YELLOW_CARD',
+          side:   isHomeSide ? 'home' : 'away',
+        };
+      }).sort((a, b) => (a.minute ?? 0) - (b.minute ?? 0));
+
+      liveData[key] = { ...existing, scorers, bookings };
+    });
+  }
+
   // ── NOTIFY ────────────────────────────────────────────────────────────
   function _notify() {
     listeners.forEach(fn => { try { fn(liveData); } catch(e) {} });
@@ -446,9 +537,39 @@ const Live = (() => {
 
   function scoreLabel(f) {
     const d = forFixture(f);
-    // Only show score if we actually have numbers (not null from phantom)
     if (!d || d.scoreHome === null || d.scoreAway === null) return null;
     return `${d.scoreHome}–${d.scoreAway}`;
+  }
+
+  // Full score breakdown for KO matches that went past 90 minutes.
+  // Returns null for normal-time results, otherwise an object describing
+  // what to render: the regulation score plus an extra-time and/or
+  // penalties line. Used by calendar.js / bracket.js / teamGrid.js to show
+  // "2-2 (AET) — Pens 5-4" instead of just the final number.
+  function scoreBreakdown(f) {
+    const d = forFixture(f);
+    if (!d || d.scoreHome === null || d.scoreAway === null) return null;
+    if (d.duration === 'REGULAR') return null; // nothing extra to show
+
+    return {
+      duration:   d.duration,                 // 'EXTRA_TIME' | 'PENALTY_SHOOTOUT'
+      regHome:    d.scoreHome,                // score shown is already fullTime
+      regAway:    d.scoreAway,
+      etHome:     d.etHome,
+      etAway:     d.etAway,
+      penHome:    d.penHome,
+      penAway:    d.penAway,
+      winnerSide: d.winnerSide,
+    };
+  }
+
+  // Which side won outright — reads the API's authoritative winner field so
+  // penalty-shootout results resolve correctly even when fullTime is level.
+  function winnerSide(f) {
+    const d = forFixture(f);
+    if (!d) return null;
+    if (d.status !== 'FINISHED') return null;
+    return d.winnerSide; // 'home' | 'away' | null (null only for group-stage draws)
   }
 
   function statusBadge(f) {
@@ -465,7 +586,6 @@ const Live = (() => {
   }
 
   function scorersHtml(f) {
-    // Free tier: no goals data — return empty string silently
     const d = forFixture(f);
     if (!d || !d.scorers?.length) return '';
     return `<div class="scorers-row">${
@@ -476,11 +596,128 @@ const Live = (() => {
     }</div>`;
   }
 
+  // Raw scorer list for a fixture, split by side, for building a custom
+  // "who scored" dropdown. Returns null if no goal-event data is available
+  // yet for this match (e.g. it finished more than ~6 hours ago and the
+  // detail-fetch window already passed, or goal data hasn't synced yet).
+  function getScorers(f) {
+    const d = forFixture(f);
+    if (!d) return null;
+    return {
+      home: (d.scorers || []).filter(g => g.side === 'home'),
+      away: (d.scorers || []).filter(g => g.side === 'away'),
+      bookings: {
+        home: (d.bookings || []).filter(b => b.side === 'home'),
+        away: (d.bookings || []).filter(b => b.side === 'away'),
+      },
+      hasDetail: !!(d.scorers && d.scorers.length) || !!(d.bookings && d.bookings.length),
+    };
+  }
+
   function getTopScorers() { return topScorers; }
+
+  // ── SHARED UI BUILDERS ───────────────────────────────────────────────
+  // These build ready-made HTML fragments so calendar.js, bracket.js and
+  // teamGrid.js render scores/scorer-dropdowns identically, with the same
+  // markup and CSS classes, instead of three slightly different versions.
+
+  // Score label including penalty/extra-time breakdown when applicable.
+  // Normal match:        "2–1"
+  // Decided after ET:    "2–2" with a small "(AET)" tag handled by caller
+  // Decided on penalties: main label stays the regulation/ET score, plus
+  //                       a separate "Pens 5–4" line is returned too.
+  function scoreLabelDetailed(f) {
+    const main = scoreLabel(f);
+    if (!main) return null;
+    const bd = scoreBreakdown(f);
+    if (!bd) return { main, sub: null };
+
+    if (bd.duration === 'PENALTY_SHOOTOUT' && bd.penHome !== null && bd.penAway !== null) {
+      return { main, sub: `Pens ${bd.penHome}–${bd.penAway}`, tag: 'AET' };
+    }
+    if (bd.duration === 'EXTRA_TIME') {
+      return { main, sub: null, tag: 'AET' };
+    }
+    return { main, sub: null };
+  }
+
+  // Builds the score/vs HTML block used inside a match card, including the
+  // (AET) tag and Pens line when the match needed extra time or penalties.
+  function scoreBlockHtml(f, vsLabel) {
+    const detail = scoreLabelDetailed(f);
+    if (!detail) return `<span class="match-sep">${vsLabel || 'vs'}</span>`;
+
+    const ld = forFixture(f);
+    const liveCls = (ld && ld.status === 'IN_PLAY') ? 'score--live' : '';
+    const tagHtml = detail.tag ? `<span class="score-tag">${detail.tag}</span>` : '';
+    const subHtml = detail.sub ? `<span class="score-pens">${detail.sub}</span>` : '';
+
+    return `<span class="score-block">
+      <span class="match-score ${liveCls}">${detail.main}</span>${tagHtml}
+      ${subHtml}
+    </span>`;
+  }
+
+  // Builds a clickable "Scorers ▾" toggle + collapsible panel for a
+  // finished match. Returns '' if there's no goal-event data available
+  // for this fixture (e.g. it's a future match, or detail hasn't synced
+  // yet). The panel is collapsed by default; clicking the header toggles
+  // a CSS class — no extra JS wiring needed beyond what's in styles.css
+  // plus the tiny inline onclick below.
+  function scorerDropdownHtml(f) {
+    const d = forFixture(f);
+    if (!d || d.status !== 'FINISHED') return '';
+    const sc = getScorers(f);
+    if (!sc || !sc.hasDetail) return '';
+
+    const elId = `scorer-dd-${f.id}`;
+    const totalGoals = sc.home.length + sc.away.length;
+    const totalCards = sc.bookings.home.length + sc.bookings.away.length;
+    if (totalGoals === 0 && totalCards === 0) return '';
+
+    function _goalRow(g) {
+      const ico = g.type === 'OWN_GOAL' ? '⚽ (OG)' : g.type === 'PENALTY' ? '⚽ (P)' : '⚽';
+      return `<div class="scorer-dd-row">
+        <span class="scorer-dd-icon">${ico}</span>
+        <span class="scorer-dd-name">${g.player}</span>
+        <span class="scorer-dd-min">${g.minute != null ? g.minute + "'" : ''}</span>
+      </div>`;
+    }
+    function _cardRow(b) {
+      const ico = b.card === 'RED_CARD' || b.card === 'RED' ? '🟥' : '🟨';
+      return `<div class="scorer-dd-row scorer-dd-row--card">
+        <span class="scorer-dd-icon">${ico}</span>
+        <span class="scorer-dd-name">${b.player}</span>
+        <span class="scorer-dd-min">${b.minute != null ? b.minute + "'" : ''}</span>
+      </div>`;
+    }
+
+    const homeGoals = sc.home.map(_goalRow).join('') || '<div class="scorer-dd-empty">No goals</div>';
+    const awayGoals = sc.away.map(_goalRow).join('') || '<div class="scorer-dd-empty">No goals</div>';
+    const homeCards = sc.bookings.home.map(_cardRow).join('');
+    const awayCards = sc.bookings.away.map(_cardRow).join('');
+
+    return `
+      <button class="scorer-toggle" type="button"
+        onclick="this.closest('.day-match-card,.ko-match-card,.match-row')?.classList.toggle('scorer-open'); this.querySelector('.scorer-toggle-arrow').classList.toggle('scorer-toggle-arrow--open')">
+        <span>⚽ Goal scorers${totalCards ? ' & cards' : ''}</span>
+        <span class="scorer-toggle-arrow">▾</span>
+      </button>
+      <div class="scorer-dd-panel" id="${elId}">
+        <div class="scorer-dd-col">
+          ${homeGoals}${homeCards}
+        </div>
+        <div class="scorer-dd-col scorer-dd-col--right">
+          ${awayGoals}${awayCards}
+        </div>
+      </div>`;
+  }
 
   return {
     init, onUpdate,
     forFixture, scoreLabel, statusBadge, scorersHtml,
+    scoreBreakdown, winnerSide, getScorers,
+    scoreLabelDetailed, scoreBlockHtml, scorerDropdownHtml,
     hasKey: true, getTopScorers,
   };
 })();

@@ -59,6 +59,11 @@ jobs:
             "https://api.football-data.org/v4/competitions/2000/scorers?season=2026&limit=400" \
             -o data/scorers.json
 
+      - name: Fetch goal events for recently-finished matches
+        run: |
+          mkdir -p data/match-details
+          python3 scripts/fetch-match-details.py
+
       - name: Show summary
         run: |
           python3 -c "
@@ -79,6 +84,6 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/matches.json data/scorers.json data/today.json
+          git add data/matches.json data/scorers.json data/today.json data/match-details.json data/match-details/
           git diff --staged --quiet || git commit -m "scores $(date -u +'%Y-%m-%d %H:%M UTC')"
           git push
