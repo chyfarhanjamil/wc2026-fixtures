@@ -6,65 +6,8 @@ const Bracket = (() => {
   const STAGE_I18N  = { r32:'bracket_label_r32', r16:'bracket_label_r16', qf:'bracket_label_qf',
                         sf:'bracket_label_sf', '3rd':'bracket_label_3rd', final:'bracket_label_final' };
 
-  // Track which sections are open. This starts closed everywhere and is
-  // then auto-computed by _syncAutoOpen() so that only the stage that is
-  // "currently up" (the earliest stage that isn't 100% finished yet) is
-  // expanded, and everything else collapses. Once a user manually opens
-  // or closes a section by hand, we leave their choice alone until the
-  // active stage actually changes (e.g. R32 finishes and R16 kicks off).
-  const _open = { standings: false, r32: false, r16: false, qf: false, sf: false, '3rd': false, final: false };
-
-  // Remembers the last auto-computed "active" stage / group-done state so
-  // we only re-force the accordion open/closed when something actually
-  // changes, instead of stomping on manual toggles on every re-render.
-  let _lastActiveStage = null;
-  let _lastGroupsDone = null;
-
-  function _stageAllFinished(stage) {
-    const matches = WC2026.FIXTURES.filter(f => f.stage === stage);
-    if (!matches.length) return false;
-    return matches.every(f => {
-      const ld = Live.forFixture(f);
-      return ld && ld.status === 'FINISHED';
-    });
-  }
-
-  // Earliest knockout stage that still has at least one unfinished match.
-  // Once every stage is finished (tournament over) this settles on 'final'.
-  function _computeActiveStage() {
-    for (const stage of STAGE_ORDER) {
-      const matches = WC2026.FIXTURES.filter(f => f.stage === stage);
-      if (!matches.length) continue;
-      if (!_stageAllFinished(stage)) return stage;
-    }
-    return STAGE_ORDER[STAGE_ORDER.length - 1];
-  }
-
-  // Auto-expand exactly the section that's "live" right now:
-  //  - Group standings stay open while the group stage is still ongoing,
-  //    then auto-collapse once every group match is finished.
-  //  - Whichever KO stage is the current one (in progress or next up)
-  //    opens by itself; every other KO stage collapses.
-  // This only fires the *first* time we detect a transition — after that,
-  // manual clicks are respected until the active stage changes again.
-  function _syncAutoOpen() {
-    const groupMatches = WC2026.FIXTURES.filter(f => f.stage === 'group');
-    const groupsDone = groupMatches.length ? groupMatches.every(f => {
-      const ld = Live.forFixture(f);
-      return ld && ld.status === 'FINISHED';
-    }) : false;
-
-    if (_lastGroupsDone === null || groupsDone !== _lastGroupsDone) {
-      _open.standings = !groupsDone;
-      _lastGroupsDone = groupsDone;
-    }
-
-    const activeStage = _computeActiveStage();
-    if (_lastActiveStage === null || activeStage !== _lastActiveStage) {
-      STAGE_ORDER.forEach(s => { _open[s] = (s === activeStage); });
-      _lastActiveStage = activeStage;
-    }
-  }
+  // Track which sections are open (default: all open)
+  const _open = { standings: false, r32: false, r16: false, qf: true, sf: true, '3rd': true, final: true };
 
   // Map of KO match IDs to a short human-readable label
   const KO_MATCH_LABELS = {
@@ -192,8 +135,6 @@ const Bracket = (() => {
   }
 
   function render() {
-    _syncAutoOpen();
-
     const container = document.getElementById('bracketContent');
     container.innerHTML = '';
 

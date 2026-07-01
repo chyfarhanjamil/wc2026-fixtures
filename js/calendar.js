@@ -35,35 +35,6 @@ const Calendar = (() => {
     return false;
   }
 
-  function _todayKey() {
-    const now = new Date();
-    return matchKey(now.getFullYear(), now.getMonth() + 1, now.getDate());
-  }
-
-  // Jumps the calendar to the real current month/year and selects today.
-  // Called the first time the person opens the Calendar tab in a session;
-  // after that their own clicks take over and this doesn't fire again.
-  function selectToday() {
-    const now = new Date();
-    calMonth = now.getMonth() + 1;
-    calYear = now.getFullYear();
-    selectedKey = _todayKey();
-    render();
-    renderDayResults();
-  }
-
-  // Entry point used by App when switching into Calendar mode: select
-  // today automatically the first time, otherwise just re-render whatever
-  // day the person already had selected.
-  function showDefault() {
-    if (selectedKey === null) {
-      selectToday();
-    } else {
-      render();
-      renderDayResults();
-    }
-  }
-
   function shiftMonth(delta) {
     calMonth += delta;
     if (calMonth > 12) { calMonth = 1; calYear++; }
@@ -214,16 +185,8 @@ const Calendar = (() => {
          </div>`
       : '';
 
-    // Finished matches show their goal-scorer breakdown open by default
-    // (name + minute for each goal), so people don't have to click to see
-    // who scored — they can still collapse it via the toggle if they want.
-    const ld2 = Live.forFixture(f);
-    const isFinished = ld2 && ld2.status === 'FINISHED';
-    const scorerHtml = Live.scorerDropdownHtml(f);
-    const openCls = isFinished && scorerHtml ? ' scorer-open' : '';
-
     return `
-      <div class="day-match-card${f.stage==='final' ? ' day-match-card--final' : ''}${openCls}">
+      <div class="day-match-card${f.stage==='final' ? ' day-match-card--final' : ''}">
         <div class="day-match-header">
           ${stagePill}
           <span class="day-match-venue-inline">${f.venue}</span>
@@ -237,7 +200,7 @@ const Calendar = (() => {
           <span class="hl hl-right">${dAway}</span>
         </div>
         ${koHint}
-        ${scorerHtml.replace('scorer-toggle-arrow"', openCls ? 'scorer-toggle-arrow scorer-toggle-arrow--open"' : 'scorer-toggle-arrow"')}
+        ${Live.scorerDropdownHtml(f)}
         <div class="day-match-foot">
           <span class="day-match-time-pill">${f.tzTime}</span>
         </div>
@@ -247,5 +210,5 @@ const Calendar = (() => {
   function onSearchChange() { render(); if (selectedKey) renderDayResults(); }
   function refreshLive()    { render(); if (selectedKey) renderDayResults(); }
 
-  return { shiftMonth, render, onSearchChange, refreshLive, showDefault, selectToday };
+  return { shiftMonth, render, onSearchChange, refreshLive };
 })();

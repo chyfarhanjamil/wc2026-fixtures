@@ -98,51 +98,9 @@ const Simulator = (() => {
     return [];
   }
 
-  /* ── Auto-fill real results ──────────────────────────────────────── */
-  // Any bracket match that has actually been played (FINISHED in the live
-  // data) gets its winner pre-selected automatically, so the user only
-  // ever has to pick matches that haven't happened yet. These auto-picks
-  // are locked (not clickable) because they're real history, not a guess.
-  // Re-run on every render so newly-finished matches keep filling in
-  // right up through the Final.
-  function _allBracketMatchIds() {
-    return [
-      ...BRACKET.r32,
-      ...BRACKET.r16.map(m => m.id),
-      ...BRACKET.qf.map(m => m.id),
-      ...BRACKET.sf.map(m => m.id),
-      BRACKET.final.id,
-      BRACKET.third.id,
-    ];
-  }
-
-  function _autoFillResults() {
-    _allBracketMatchIds().forEach(id => {
-      const f = WC2026.FIXTURES.find(x => x.id === id);
-      if (!f) return;
-      const ld = Live.forFixture(f);
-      if (!ld || ld.status !== 'FINISHED') return;
-
-      const winSide = Live.winnerSide(f);
-      if (winSide !== 'home' && winSide !== 'away') return; // no decisive result yet
-
-      const { home, away } = _getTeamsForMatch(id);
-      const chosen = winSide === 'home' ? home : away;
-      if (!chosen || chosen.placeholder) return; // team name not resolvable yet
-
-      const existing = _picks[id];
-      if (existing && existing.auto && existing.side === winSide && existing.name === chosen.name) return;
-
-      _picks[id] = { name: chosen.name, flag: chosen.flag, side: winSide, auto: true };
-    });
-  }
-
   /* ── Pick a winner ───────────────────────────────────────────────── */
 
   function _pick(matchId, side) {
-    // Actual results are locked — can't be hand-picked over.
-    if (_picks[matchId] && _picks[matchId].auto) return;
-
     const isThird = matchId === BRACKET.third.id;
     let chosen;
     if (isThird) {
@@ -181,7 +139,6 @@ const Simulator = (() => {
 
   function reset() {
     _picks = {};
-    _autoFillResults(); // real, already-played matches stay filled in
     _render();
   }
 
@@ -199,23 +156,21 @@ const Simulator = (() => {
   function _teamBtn(matchId, side, team) {
     const isPending = team.placeholder;
     const hasPick = _picks[matchId];
-    const isAuto = !!(hasPick && hasPick.auto);
     const isWinner = hasPick && hasPick.side === side;
     const isLoser  = hasPick && hasPick.side !== side;
 
     let cls = 'sim-team';
-    if (isWinner) cls += isAuto ? ' sim-team--actual' : ' sim-team--winner';
+    if (isWinner) cls += ' sim-team--winner';
     if (isLoser)  cls += ' sim-team--loser';
     if (isPending) cls += ' sim-team--pending';
 
-    const title = isPending ? (team.desc || team.name) : (isAuto && isWinner ? `${team.name} — actual result` : team.name);
+    const title = isPending ? (team.desc || team.name) : team.name;
     const displayName = isPending ? _shortPlaceholder(team.name) : team.name;
-    const disabled = isPending || isAuto;
 
-    return `<button class="${cls}" data-match="${matchId}" data-side="${side}" title="${title.replace(/"/g, '&quot;')}" ${disabled ? 'disabled' : ''}>
+    return `<button class="${cls}" data-match="${matchId}" data-side="${side}" title="${title.replace(/"/g, '&quot;')}" ${isPending ? 'disabled' : ''}>
       ${team.flag ? `<span class="sim-flag">${team.flag}</span>` : ''}
       <span class="sim-name">${displayName}</span>
-      ${isWinner ? (isAuto ? '<span class="sim-check">✓</span>' : '<span class="sim-crown">👑</span>') : ''}
+      ${isWinner ? '<span class="sim-crown">👑</span>' : ''}
     </button>`;
   }
 
@@ -253,9 +208,7 @@ const Simulator = (() => {
         <span class="sim-vs">VS</span>
         ${_teamBtn(matchId, 'away', awayTeam)}
       </div>
-      ${hasPick ? (hasPick.auto
-        ? `<div class="sim-match-result sim-match-result--actual">✓ ${_picks[matchId].name} won — actual result</div>`
-        : `<div class="sim-match-result">✓ ${_picks[matchId].name} advances</div>`) : ''}
+      ${hasPick ? `<div class="sim-match-result">✓ ${_picks[matchId].name} advances</div>` : ''}
     </div>`;
   }
 
@@ -277,9 +230,7 @@ const Simulator = (() => {
         <div class="sim-champion-trophy">🏆</div>
         <div class="sim-champion-label">WORLD CHAMPION</div>
         <div class="sim-champion-name">${champion.flag} ${champion.name}</div>
-        ${champion.auto
-          ? `<div class="sim-champion-actual-tag">✓ Official result</div>`
-          : `<button class="sim-repick-btn" data-match="${BRACKET.final.id}">Change pick</button>`}
+        <button class="sim-repick-btn" data-match="${BRACKET.final.id}">Change pick</button>
       </div>`;
     }
 
@@ -302,8 +253,6 @@ const Simulator = (() => {
   }
 
   function _render() {
-    _autoFillResults();
-
     const container = document.getElementById('simContainer');
     if (!container) return;
 
@@ -433,13 +382,6 @@ const Simulator = (() => {
     }
   }
 
-  // Called whenever new live data arrives. Only actually re-renders if the
-  // simulator panel is currently open, otherwise it's a no-op — the next
-  // time the user opens it, _render() auto-fills from scratch anyway.
-  function refreshLive() {
-    if (_visible) _render();
-  }
-
   function init() {
     // Avoid duplicate injection on re-render
     if (document.getElementById('simToggleBtn')) return;
@@ -450,7 +392,7 @@ const Simulator = (() => {
     const toggleBar = document.createElement('div');
     toggleBar.className = 'sim-toggle-bar';
     toggleBar.innerHTML = `<button id="simToggleBtn" class="sim-toggle-btn" onclick="Simulator.toggle()">🎮 Simulate Bracket</button>
-      <span class="sim-toggle-hint">Already-played matches are filled in for you — just pick the rest, round by round</span>`;
+      <span class="sim-toggle-hint">Pick winners round by round to predict your champion</span>`;
     bracketContent.parentElement.insertBefore(toggleBar, bracketContent);
 
     // Insert the simulator panel
@@ -462,5 +404,5 @@ const Simulator = (() => {
     bracketContent.parentElement.insertBefore(panel, bracketContent);
   }
 
-  return { init, toggle, reset, refreshLive };
+  return { init, toggle, reset };
 })();
