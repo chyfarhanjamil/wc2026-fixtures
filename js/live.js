@@ -867,7 +867,12 @@ const Live = (() => {
     const d = forFixture(f);
     if (!d || d.status !== "FINISHED") return "";
     const sc = getScorers(f);
-    if (!sc || !sc.hasDetail) return "";
+    if (!sc || !sc.hasDetail) {
+      // The match is over but goal-by-goal detail hasn't synced yet
+      // (it's fetched in a separate, rate-limited pass). Say so instead
+      // of just showing nothing, so it's clear more info is coming.
+      return `<div class="scorer-pending-note">⚽ Goal scorer details will appear here once available</div>`;
+    }
 
     const elId = `scorer-dd-${f.id}`;
     const totalGoals = sc.home.length + sc.away.length;
