@@ -198,10 +198,16 @@ const Calendar = (() => {
       ? (resolved.awayResolved ? resolved.away : resolved.away.replace(/\b([A-L])\b/g, l => I18n.groupLetter(l)))
       : (f.displayAway || f.away);
 
+    // Flags: reliable for group-stage (raw f.home/f.away are real team
+    // names) and for resolved KO matches; unresolved KO placeholders just
+    // show no flag rather than a misleading one.
+    const flagHome = !f.isKO ? (WC2026.FLAGS[f.home] || '') : (resolved.homeResolved ? (WC2026.FLAGS[resolved.home] || '') : '');
+    const flagAway = !f.isKO ? (WC2026.FLAGS[f.away] || '') : (resolved.awayResolved ? (WC2026.FLAGS[resolved.away] || '') : '');
+
     const scoreOrVs = Live.scoreBlockHtml(f, I18n.t('vs'));
 
     const stagePill = f.isKO
-      ? `<span class="day-stage-pill day-stage-pill--ko">${f.label}</span>`
+      ? `<span class="day-stage-pill day-stage-pill--ko">${I18n.stageLabel(f.stage)}</span>`
       : `<span class="day-stage-pill">${I18n.t('group_prefix')} ${dGroup}</span>`;
 
     // For KO fixtures that haven't been played yet, show a friendly hint for
@@ -219,22 +225,22 @@ const Calendar = (() => {
     // who scored — they can still collapse it via the toggle if they want.
     const ld2 = Live.forFixture(f);
     const isFinished = ld2 && ld2.status === 'FINISHED';
-    const scorerHtml = Live.scorerDropdownHtml(f);
+    const scorerHtml = Live.scorerDropdownHtml(f, dHome, dAway, flagHome, flagAway);
     const openCls = isFinished && scorerHtml ? ' scorer-open' : '';
 
     return `
       <div class="day-match-card${f.stage==='final' ? ' day-match-card--final' : ''}${openCls}">
         <div class="day-match-header">
           ${stagePill}
-          <span class="day-match-venue-inline">${f.venue}</span>
+          <span class="day-match-venue-inline" title="${f.venue}">📍 ${f.venue}</span>
         </div>
         <div class="day-match-teams">
-          <span class="hl">${dHome}</span>
+          <span class="hl"><span class="day-match-flag">${flagHome}</span>${dHome}</span>
           <span class="day-match-center">
             ${scoreOrVs}
             ${badge}
           </span>
-          <span class="hl hl-right">${dAway}</span>
+          <span class="hl hl-right">${dAway}<span class="day-match-flag">${flagAway}</span></span>
         </div>
         ${koHint}
         ${scorerHtml.replace('scorer-toggle-arrow"', openCls ? 'scorer-toggle-arrow scorer-toggle-arrow--open"' : 'scorer-toggle-arrow"')}

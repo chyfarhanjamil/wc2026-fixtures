@@ -857,17 +857,69 @@ const Live = (() => {
     </span>`;
   }
 
+  // Shared row builders used by both the collapsible scorer dropdown and
+  // the always-open featured match card.
+  function _goalRowHtml(g) {
+    const ico =
+      g.type === "OWN_GOAL"
+        ? "⚽<span class=\"scorer-dd-tag\">OG</span>"
+        : g.type === "PENALTY"
+          ? "⚽<span class=\"scorer-dd-tag\">P</span>"
+          : "⚽";
+    return `<div class="scorer-dd-row">
+      <span class="scorer-dd-icon">${ico}</span>
+      <span class="scorer-dd-name">${g.player}</span>
+      <span class="scorer-dd-min">${g.minute != null ? g.minute + "'" : ""}</span>
+    </div>`;
+  }
+  function _cardRowHtml(b) {
+    const ico = b.card === "RED_CARD" || b.card === "RED" ? "🟥" : "🟨";
+    return `<div class="scorer-dd-row scorer-dd-row--card">
+      <span class="scorer-dd-icon">${ico}</span>
+      <span class="scorer-dd-name">${b.player}</span>
+      <span class="scorer-dd-min">${b.minute != null ? b.minute + "'" : ""}</span>
+    </div>`;
+  }
+
+  // Computes everything needed to render a scorer/cards breakdown for a
+  // finished fixture, or tells the caller why there's nothing to show yet.
+  function _scorerBreakdownParts(f) {
+    const d = forFixture(f);
+    if (!d || d.status !== "FINISHED") return { state: "not-finished" };
+    const sc = getScorers(f);
+    if (!sc || !sc.hasDetail) return { state: "pending" };
+
+    const totalGoals = sc.home.length + sc.away.length;
+    const totalCards = sc.bookings.home.length + sc.bookings.away.length;
+    if (totalGoals === 0 && totalCards === 0) return { state: "empty" };
+
+    return {
+      state: "ready",
+      totalGoals,
+      totalCards,
+      homeGoalsHtml: sc.home.map(_goalRowHtml).join("") ||
+        '<div class="scorer-dd-empty">No goals</div>',
+      awayGoalsHtml: sc.away.map(_goalRowHtml).join("") ||
+        '<div class="scorer-dd-empty">No goals</div>',
+      homeCardsHtml: sc.bookings.home.map(_cardRowHtml).join(""),
+      awayCardsHtml: sc.bookings.away.map(_cardRowHtml).join(""),
+    };
+  }
+
   // Builds a clickable "Scorers ▾" toggle + collapsible panel for a
   // finished match. Returns '' if there's no goal-event data available
   // for this fixture (e.g. it's a future match, or detail hasn't synced
   // yet). The panel is collapsed by default; clicking the header toggles
   // a CSS class — no extra JS wiring needed beyond what's in styles.css
   // plus the tiny inline onclick below.
-  function scorerDropdownHtml(f) {
-    const d = forFixture(f);
-    if (!d || d.status !== "FINISHED") return "";
-    const sc = getScorers(f);
-    if (!sc || !sc.hasDetail) {
+  //
+  // homeLabel/awayLabel (+ optional flags) are used for the small column
+  // headers above each side's goal list so it's clear which side is which
+  // without having to cross-reference the scoreboard above.
+  function scorerDropdownHtml(f, homeLabel, awayLabel, homeFlag, awayFlag) {
+    const parts = _scorerBreakdownParts(f);
+    if (parts.state === "not-finished" || parts.state === "empty") return "";
+    if (parts.state === "pending") {
       // The match is over but goal-by-goal detail hasn't synced yet
       // (it's fetched in a separate, rate-limited pass). Say so instead
       // of just showing nothing, so it's clear more info is coming.
@@ -875,55 +927,92 @@ const Live = (() => {
     }
 
     const elId = `scorer-dd-${f.id}`;
-    const totalGoals = sc.home.length + sc.away.length;
-    const totalCards = sc.bookings.home.length + sc.bookings.away.length;
-    if (totalGoals === 0 && totalCards === 0) return "";
-
-    function _goalRow(g) {
-      const ico =
-        g.type === "OWN_GOAL"
-          ? "⚽ (OG)"
-          : g.type === "PENALTY"
-            ? "⚽ (P)"
-            : "⚽";
-      return `<div class="scorer-dd-row">
-        <span class="scorer-dd-icon">${ico}</span>
-        <span class="scorer-dd-name">${g.player}</span>
-        <span class="scorer-dd-min">${g.minute != null ? g.minute + "'" : ""}</span>
-      </div>`;
-    }
-    function _cardRow(b) {
-      const ico = b.card === "RED_CARD" || b.card === "RED" ? "🟥" : "🟨";
-      return `<div class="scorer-dd-row scorer-dd-row--card">
-        <span class="scorer-dd-icon">${ico}</span>
-        <span class="scorer-dd-name">${b.player}</span>
-        <span class="scorer-dd-min">${b.minute != null ? b.minute + "'" : ""}</span>
-      </div>`;
-    }
-
-    const homeGoals =
-      sc.home.map(_goalRow).join("") ||
-      '<div class="scorer-dd-empty">No goals</div>';
-    const awayGoals =
-      sc.away.map(_goalRow).join("") ||
-      '<div class="scorer-dd-empty">No goals</div>';
-    const homeCards = sc.bookings.home.map(_cardRow).join("");
-    const awayCards = sc.bookings.away.map(_cardRow).join("");
+    const homeHead = homeLabel
+      ? `<div class="scorer-dd-head">${homeFlag ? `<span class="scorer-dd-head-flag">${homeFlag}</span>` : ""}${homeLabel}</div>`
+      : "";
+    const awayHead = awayLabel
+      ? `<div class="scorer-dd-head">${awayFlag ? `<span class="scorer-dd-head-flag">${awayFlag}</span>` : ""}${awayLabel}</div>`
+      : "";
 
     return `
       <button class="scorer-toggle" type="button"
         onclick="this.closest('.day-match-card,.ko-match-card,.match-row')?.classList.toggle('scorer-open'); this.querySelector('.scorer-toggle-arrow').classList.toggle('scorer-toggle-arrow--open')">
-        <span>⚽ Goal scorers${totalCards ? " & cards" : ""}</span>
+        <span>⚽ Goal scorers${parts.totalCards ? " & cards" : ""}</span>
         <span class="scorer-toggle-arrow">▾</span>
       </button>
       <div class="scorer-dd-panel" id="${elId}">
         <div class="scorer-dd-col">
-          ${homeGoals}${homeCards}
+          ${homeHead}${parts.homeGoalsHtml}${parts.homeCardsHtml}
         </div>
         <div class="scorer-dd-col scorer-dd-col--right">
-          ${awayGoals}${awayCards}
+          ${awayHead}${parts.awayGoalsHtml}${parts.awayCardsHtml}
         </div>
       </div>`;
+  }
+
+  // Builds a polished, always-expanded "featured match" card — used for
+  // the Today / Yesterday highlights at the top of the home page. Shows
+  // flags, the score (with AET/penalties line when relevant), the stage,
+  // and — once the match is finished — the full scorer breakdown inline
+  // (no click needed). For matches that haven't kicked off or are still
+  // in progress, it shows the kickoff time / live badge instead.
+  function featuredMatchCardHtml(f, dHome, dAway, dateLabel, stageLabelText) {
+    const flagHome = WC2026.FLAGS[f.home] || "";
+    const flagAway = WC2026.FLAGS[f.away] || "";
+    const d = forFixture(f);
+    const isFinished = d && d.status === "FINISHED";
+    const detail = scoreLabelDetailed(f);
+    const badge = statusBadge(f);
+
+    let stateLine = "";
+    if (isFinished && detail?.tag === "AET") {
+      const bd = scoreBreakdown(f);
+      stateLine = bd?.duration === "PENALTY_SHOOTOUT" ? "After penalties" : "After extra time";
+    } else if (!isFinished) {
+      stateLine = f.tzTime;
+    }
+
+    const centerHtml = detail
+      ? `<div class="fm-score">${detail.main}</div>${detail.sub ? `<div class="fm-score-sub">${detail.sub}</div>` : ""}`
+      : `<div class="fm-score fm-score--vs">${I18n ? I18n.t("vs") : "vs"}</div>`;
+
+    const parts = isFinished ? _scorerBreakdownParts(f) : { state: "not-finished" };
+    let scorersHtml = "";
+    if (parts.state === "ready") {
+      scorersHtml = `<div class="fm-scorers">
+        <div class="fm-scorers-col">${parts.homeGoalsHtml}${parts.homeCardsHtml}</div>
+        <div class="fm-scorers-col fm-scorers-col--right">${parts.awayGoalsHtml}${parts.awayCardsHtml}</div>
+      </div>`;
+    } else if (parts.state === "pending") {
+      scorersHtml = `<div class="scorer-pending-note">⚽ Goal scorer details will appear here once available</div>`;
+    }
+
+    return `<div class="fm-card">
+      <div class="fm-head">
+        <span class="fm-teams-label">${dHome} <span class="fm-vs-sep">vs</span> ${dAway}</span>
+        <span class="fm-date-label">${dateLabel}</span>
+      </div>
+      <div class="fm-meta-row">
+        <span class="fm-competition">FIFA World Cup 2026™</span>
+        ${stateLine ? `<span class="fm-state">${stateLine}</span>` : ""}
+      </div>
+      <div class="fm-scoreboard">
+        <div class="fm-side">
+          <span class="fm-flag">${flagHome}</span>
+          <span class="fm-team-name">${dHome}</span>
+        </div>
+        <div class="fm-center">
+          ${centerHtml}
+          ${badge}
+        </div>
+        <div class="fm-side fm-side--right">
+          <span class="fm-team-name">${dAway}</span>
+          <span class="fm-flag">${flagAway}</span>
+        </div>
+      </div>
+      ${stageLabelText ? `<div class="fm-stage">${stageLabelText}</div>` : ""}
+      ${scorersHtml}
+    </div>`;
   }
 
   return {
@@ -939,6 +1028,7 @@ const Live = (() => {
     scoreLabelDetailed,
     scoreBlockHtml,
     scorerDropdownHtml,
+    featuredMatchCardHtml,
     hasKey: true,
     getTopScorers,
   };

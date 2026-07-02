@@ -53,18 +53,9 @@
   </div>
 
   <div class="mode-bar">
-    <button class="mode-btn" id="modeGroup"    onclick="App.setMode('group')"><span class="icon">🔠</span> By Group</button>
-    <button class="mode-btn" id="modeTime"     onclick="App.setMode('time')"><span class="icon">🕐</span> By Time</button>
+    <button class="mode-btn" id="modeHome"     onclick="App.setMode('home')"><span class="icon">🏠</span> Home</button>
     <button class="mode-btn" id="modeCalendar" onclick="App.setMode('calendar')"><span class="icon">📅</span> Calendar</button>
-    <button class="mode-btn" id="modeBracket"  onclick="App.setMode('bracket')"><span class="icon">🏆</span> Knockout</button>
-    <button class="mode-btn" id="modeStats"   onclick="App.setMode('stats')"><span class="icon">📊</span> Stats</button>
-  </div>
-
-  <div class="filter-panel" id="groupPanel">
-    <button class="filter-chip active" onclick="App.setGroup(null, this)">All Groups</button>
-  </div>
-  <div class="filter-panel" id="timePanel">
-    <button class="filter-chip active" onclick="App.setTimeSlot(null, this)">All Times</button>
+    <button class="mode-btn" id="modeStats"    onclick="App.setMode('stats')"><span class="icon">📊</span> Stats</button>
   </div>
 </div>
 
@@ -84,7 +75,7 @@
   </div>
 </div>
 
-<!-- ── Knockout + Standings ──────────────────────────────────────────────── -->
+<!-- ── Home: Today/Yesterday + Standings + Group Stage + Knockout ─────────── -->
 <div id="bracketSection" class="section-wrap" style="display:none;">
   <div id="bracketContent"></div>
 </div>
@@ -99,8 +90,6 @@
   <button class="export-btn" onclick="Export.open()">📲 Add to iPhone / Google Calendar</button>
 </div>
 
-<!-- ── Team cards grid ──────────────────────────────────────────────────── -->
-<div class="teams-grid" id="grid"></div>
 
 <!-- ── Export modal ─────────────────────────────────────────────────────── -->
 <div class="modal-overlay" id="exportModal" onclick="Export.handleOverlay(event)">
@@ -129,7 +118,6 @@
 <script src="js/live.js"></script>
 <script src="js/standings.js"></script>
 <script src="js/resolver.js"></script>
-<script src="js/teamGrid.js"></script>
 <script src="js/calendar.js"></script>
 <script src="js/bracket.js"></script>
 <script src="js/export.js"></script>

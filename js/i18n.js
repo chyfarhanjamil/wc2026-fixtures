@@ -87,6 +87,15 @@ const I18n = (() => {
   /* ── Group letter — always stays A–L in every language (universal standard) */
   function groupLetter(letter) { return letter; }
 
+  const _STAGE_LABEL_KEYS = {
+    r32: 'bracket_label_r32', r16: 'bracket_label_r16', qf: 'bracket_label_qf',
+    sf: 'bracket_label_sf', '3rd': 'bracket_label_3rd', final: 'bracket_label_final',
+  };
+  function stageLabel(stage) {
+    const key = _STAGE_LABEL_KEYS[stage];
+    return key ? t(key) : stage;
+  }
+
   /* ── Team name translations ─────────────────────────────────────────────── */
   const TEAM_NAMES = {
     'Mexico':               { bn:'মেক্সিকো',          hi:'मेक्सिको',       fr:'Mexique',           de:'Mexiko',          es:'México',          pt:'México',          ar:'المكسيك' },
@@ -233,8 +242,19 @@ const I18n = (() => {
     },
     mode_group:    { en:'By Group',  bn:'গ্রুপভিত্তিক',  hi:'ग्रुप अनुसार', fr:'Par groupe',  de:'Nach Gruppe', es:'Por grupo',   pt:'Por grupo',   ar:'حسب المجموعة' },
     mode_time:     { en:'By Time',   bn:'সময়ভিত্তিক',   hi:'समय अनुसार',   fr:'Par horaire', de:'Nach Zeit',   es:'Por horario', pt:'Por horário', ar:'حسب الوقت'    },
+    mode_home:     { en:'Home',      bn:'হোম',           hi:'होम',          fr:'Accueil',     de:'Startseite',  es:'Inicio',      pt:'Início',      ar:'الرئيسية'     },
     mode_calendar: { en:'Calendar',  bn:'ক্যালেন্ডার',  hi:'कैलेंडर',      fr:'Calendrier',  de:'Kalender',    es:'Calendario',  pt:'Calendário',  ar:'التقويم'      },
     mode_knockout: { en:'Knockout',  bn:'নকআউট',        hi:'नॉकआउट',       fr:'Élimination', de:'KO-Runde',    es:'Eliminatoria',pt:'Eliminatória',ar:'الإقصاء'      },
+
+    label_today:     { en:'Today',     bn:'আজ',        hi:'आज',       fr:"Aujourd'hui", de:'Heute',    es:'Hoy',      pt:'Hoje',     ar:'اليوم'   },
+    label_yesterday: { en:'Yesterday', bn:'গতকাল',      hi:'कल',       fr:'Hier',        de:'Gestern',  es:'Ayer',     pt:'Ontem',    ar:'أمس'     },
+    today_matches_title:    { en:"Today's Matches",      bn:'আজকের ম্যাচ',       hi:'आज के मैच',      fr:"Matchs d'aujourd'hui", de:'Heutige Spiele',   es:'Partidos de hoy',    pt:'Jogos de hoje',     ar:'مباريات اليوم' },
+    yesterday_matches_title:{ en:"Yesterday's Results",   bn:'গতকালের ফলাফল',    hi:'कल के परिणाम',   fr:"Résultats d'hier",    de:'Gestrige Ergebnisse', es:'Resultados de ayer', pt:'Resultados de ontem',ar:'نتائج الأمس' },
+    no_matches_today:       { en:'No matches scheduled today.', bn:'আজ কোনো ম্যাচ নেই।', hi:'आज कोई मैच नहीं।', fr:"Aucun match aujourd'hui.", de:'Heute keine Spiele.', es:'Sin partidos hoy.', pt:'Sem jogos hoje.', ar:'لا مباريات اليوم.' },
+    no_matches_yesterday:   { en:'No matches were played yesterday.', bn:'গতকাল কোনো ম্যাচ হয়নি।', hi:'कल कोई मैच नहीं हुआ।', fr:"Aucun match hier.", de:'Gestern keine Spiele.', es:'Sin partidos ayer.', pt:'Sem jogos ontem.', ar:'لا مباريات أمس.' },
+    group_stage_matches_title: { en:'Group Stage Matches', bn:'গ্রুপ পর্যায়ের ম্যাচ', hi:'ग्रुप स्टेज मैच', fr:'Matchs de la phase de groupes', de:'Spiele der Gruppenphase', es:'Partidos de fase de grupos', pt:'Jogos da fase de grupos', ar:'مباريات دور المجموعات' },
+    search_no_matches: { en:'No matches found for "{q}".', bn:'"{q}" এর সাথে কোনো ম্যাচ পাওয়া যায়নি।', hi:'"{q}" से कोई मैच नहीं मिला।', fr:'Aucun match pour «{q}».', de:'Keine Spiele für „{q}".', es:'Sin partidos para "{q}".', pt:'Nenhum jogo para "{q}".', ar:'لا مباريات لـ "{q}".' },
+
 
     all_groups:    { en:'All Groups',bn:'সব গ্রুপ',       hi:'सभी ग्रुप',    fr:'Tous les groupes', de:'Alle Gruppen', es:'Todos los grupos', pt:'Todos os grupos', ar:'جميع المجموعات' },
     group_prefix:  { en:'Group',     bn:'গ্রুপ',          hi:'ग्रुप',        fr:'Groupe',           de:'Gruppe',       es:'Grupo',            pt:'Grupo',           ar:'مجموعة'          },
@@ -411,7 +431,7 @@ const I18n = (() => {
   }
 
   return {
-    t, num, teamName, groupLetter, convertNumerals,
+    t, num, teamName, groupLetter, stageLabel, convertNumerals,
     formatTime, formatDate, formatDateLong, formatCalendarHeading,
     days, months, monthsShort, timeSlots, slotLabel,
     setLang, getLang, getDir, buildSwitcher, buildDropdown, init, LANGUAGES

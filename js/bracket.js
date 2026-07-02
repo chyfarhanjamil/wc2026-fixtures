@@ -1,8 +1,16 @@
 'use strict';
 
+// This module renders the Home tab: Today/Yesterday featured match cards up
+// top, then a set of accordions — Group Standings, Group Stage matches, and
+// each knockout round (R32 → Final). It replaced the old separate "By
+// Group" / "By Time" tabs, whose content is now folded in here as the
+// Group Stage accordion (with the same group-letter filter chips), plus the
+// Knockout tab's accordion set. Only the section that's "currently up" is
+// open by default; the rest collapse, and that follows the tournament as it
+// progresses (see _syncAutoOpen below).
 const Bracket = (() => {
   const STAGE_ORDER = ['r32','r16','qf','sf','3rd','final'];
-  const STAGE_ICON  = { r32:'⚽', r16:'🎯', qf:'⚡', sf:'🔥', '3rd':'🥉', final:'🏆' };
+  const STAGE_ICON  = { group:'🔠', r32:'⚽', r16:'🎯', qf:'⚡', sf:'🔥', '3rd':'🥉', final:'🏆' };
   const STAGE_I18N  = { r32:'bracket_label_r32', r16:'bracket_label_r16', qf:'bracket_label_qf',
                         sf:'bracket_label_sf', '3rd':'bracket_label_3rd', final:'bracket_label_final' };
 
@@ -12,13 +20,18 @@ const Bracket = (() => {
   // expanded, and everything else collapses. Once a user manually opens
   // or closes a section by hand, we leave their choice alone until the
   // active stage actually changes (e.g. R32 finishes and R16 kicks off).
-  const _open = { standings: false, r32: false, r16: false, qf: false, sf: false, '3rd': false, final: false };
+  const _open = { standings: false, group: false, r32: false, r16: false, qf: false, sf: false, '3rd': false, final: false };
 
   // Remembers the last auto-computed "active" stage / group-done state so
   // we only re-force the accordion open/closed when something actually
   // changes, instead of stomping on manual toggles on every re-render.
   let _lastActiveStage = null;
   let _lastGroupsDone = null;
+
+  // Group-letter filter for the Group Stage matches accordion (null = all).
+  let _groupFilter = null;
+  // Current search box query, lower-cased & trimmed.
+  let _searchQuery = '';
 
   function _stageAllFinished(stage) {
     const matches = WC2026.FIXTURES.filter(f => f.stage === stage);
@@ -41,8 +54,8 @@ const Bracket = (() => {
   }
 
   // Auto-expand exactly the section that's "live" right now:
-  //  - Group standings stay open while the group stage is still ongoing,
-  //    then auto-collapse once every group match is finished.
+  //  - Standings + Group Stage matches stay open while the group stage is
+  //    still ongoing, then auto-collapse once every group match is finished.
   //  - Whichever KO stage is the current one (in progress or next up)
   //    opens by itself; every other KO stage collapses.
   // This only fires the *first* time we detect a transition — after that,
@@ -56,6 +69,7 @@ const Bracket = (() => {
 
     if (_lastGroupsDone === null || groupsDone !== _lastGroupsDone) {
       _open.standings = !groupsDone;
+      _open.group = !groupsDone;
       _lastGroupsDone = groupsDone;
     }
 
@@ -96,13 +110,8 @@ const Bracket = (() => {
     return raw.replace(/\b([A-L])\b/g, letter => I18n.groupLetter(letter));
   }
 
-  function _toggle(key, btn, body) {
-    _open[key] = !_open[key];
-    body.classList.toggle('ko-body--open', _open[key]);
-    btn.querySelector('.ko-chevron').style.transform = _open[key] ? 'rotate(180deg)' : 'rotate(0deg)';
-  }
-
-  function _makeSection(key, iconHtml, titleHtml, bodyHtml, badgeText) {
+  function _makeSection(key, iconHtml, titleHtml, bodyHtml, badgeText, forceOpen) {
+    if (forceOpen !== undefined) _open[key] = forceOpen;
     const isOpen = _open[key];
     const sec = document.createElement('div');
     sec.className = 'ko-section';
@@ -144,51 +153,156 @@ const Bracket = (() => {
     return html;
   }
 
-  function _buildStageHTML(stage) {
-    const matches = WC2026.FIXTURES.filter(f => f.stage === stage);
-    let html = '<div class="ko-match-list">';
+  function _matchesSearch(dHome, dAway, rawHome, rawAway, q) {
+    if (!q) return true;
+    const hay = [dHome, dAway, rawHome, rawAway].filter(Boolean).join(' ').toLowerCase();
+    return hay.includes(q);
+  }
 
-    matches.forEach(f => {
-      const ld    = Live.forFixture(f);
-      const score = Live.scoreLabel(f);
-      const badge = Live.statusBadge(f);
+  // Builds one match card. Shared by the Group Stage list and every KO
+  // stage list so they all look and behave identically.
+  function _matchCardHtml(f) {
+    const score = Live.scoreLabel(f);
+    const badge = Live.statusBadge(f);
+    const isGroup = f.stage === 'group';
 
-      // Resolver fills in real team names once group/earlier-round results
-      // make them certain; anything still unknown keeps its placeholder text.
+    let dHome, dAway, homeDesc = '', awayDesc = '', flagHome = '', flagAway = '';
+    if (isGroup) {
+      dHome = f.displayHome || f.home;
+      dAway = f.displayAway || f.away;
+      flagHome = WC2026.FLAGS[f.home] || '';
+      flagAway = WC2026.FLAGS[f.away] || '';
+    } else {
       const resolved = Resolver.resolve(f);
-      const dHome = resolved.homeResolved ? resolved.home : translatePlaceholder(resolved.home);
-      const dAway = resolved.awayResolved ? resolved.away : translatePlaceholder(resolved.away);
+      dHome = resolved.homeResolved ? resolved.home : translatePlaceholder(resolved.home);
+      dAway = resolved.awayResolved ? resolved.away : translatePlaceholder(resolved.away);
+      homeDesc = resolved.homeDesc || '';
+      awayDesc = resolved.awayDesc || '';
+      flagHome = resolved.homeResolved ? (WC2026.FLAGS[resolved.home] || '') : '';
+      flagAway = resolved.awayResolved ? (WC2026.FLAGS[resolved.away] || '') : '';
+    }
 
-      // Tooltip descriptions if available (cleared once that side is resolved)
-      const homeDesc = resolved.homeDesc || '';
-      const awayDesc = resolved.awayDesc || '';
-      const isPending = !score && f.stage !== 'group';
+    const isPending = !score && !isGroup;
+    const scoreOrVs = Live.scoreBlockHtml(f, I18n.t('vs'));
 
-      const scoreOrVs = Live.scoreBlockHtml(f, I18n.t('vs'));
-
-      html += `
-        <div class="ko-match-card${stage === 'final' ? ' ko-match--final' : ''}">
-          <div class="ko-match-meta">${f.tzDate} &nbsp;·&nbsp; ${f.tzTime} &nbsp;·&nbsp; ${f.venue}</div>
-          <div class="ko-match-teams">
-            <div class="ko-team${homeDesc ? ' ko-team--tip' : ''}" title="${homeDesc.replace(/\n/g,' ')}">
-              <span class="ko-team-name">${dHome}</span>
-              ${homeDesc && isPending ? `<span class="ko-team-hint">${homeDesc.replace(/\n/g,'<br>')}</span>` : ''}
-            </div>
-            <div class="ko-middle">
-              ${scoreOrVs}
-              ${badge}
-            </div>
-            <div class="ko-team ko-team--right${awayDesc ? ' ko-team--tip' : ''}" title="${awayDesc.replace(/\n/g,' ')}">
-              <span class="ko-team-name">${dAway}</span>
-              ${awayDesc && isPending ? `<span class="ko-team-hint">${awayDesc.replace(/\n/g,'<br>')}</span>` : ''}
-            </div>
+    const html = `
+      <div class="ko-match-card${f.stage === 'final' ? ' ko-match--final' : ''}">
+        <div class="ko-match-meta">
+          <span>${f.tzDate} &nbsp;·&nbsp; ${f.tzTime}</span>
+          <span class="ko-match-venue" title="${f.venue}">📍 ${f.venue}</span>
+        </div>
+        <div class="ko-match-teams">
+          <div class="ko-team${homeDesc ? ' ko-team--tip' : ''}" title="${homeDesc.replace(/\n/g,' ')}">
+            ${flagHome ? `<span class="ko-team-flag">${flagHome}</span>` : ''}
+            <span class="ko-team-name">${dHome}</span>
+            ${homeDesc && isPending ? `<span class="ko-team-hint">${homeDesc.replace(/\n/g,'<br>')}</span>` : ''}
           </div>
-          ${Live.scorerDropdownHtml(f)}
-        </div>`;
+          <div class="ko-middle">
+            ${scoreOrVs}
+            ${badge}
+          </div>
+          <div class="ko-team ko-team--right${awayDesc ? ' ko-team--tip' : ''}" title="${awayDesc.replace(/\n/g,' ')}">
+            <span class="ko-team-name">${dAway}</span>
+            ${flagAway ? `<span class="ko-team-flag">${flagAway}</span>` : ''}
+            ${awayDesc && isPending ? `<span class="ko-team-hint">${awayDesc.replace(/\n/g,'<br>')}</span>` : ''}
+          </div>
+        </div>
+        ${Live.scorerDropdownHtml(f, dHome, dAway, flagHome, flagAway)}
+      </div>`;
+
+    return { dHome, dAway, rawHome: f.home, rawAway: f.away, html };
+  }
+
+  // Returns { html, count }. `count` is how many matches actually rendered
+  // after filtering, so callers can hide/collapse empty sections properly
+  // instead of showing an accordion with nothing useful inside it.
+  function _buildStageHTML(stage, opts = {}) {
+    const { groupFilter, query } = opts;
+    let matches = WC2026.FIXTURES.filter(f => f.stage === stage);
+    if (groupFilter) matches = matches.filter(f => f.group === groupFilter);
+
+    let html = '';
+    let count = 0;
+    matches.forEach(f => {
+      const card = _matchCardHtml(f);
+      if (query && !_matchesSearch(card.dHome, card.dAway, card.rawHome, card.rawAway, query)) return;
+      html += card.html;
+      count++;
     });
 
-    html += '</div>';
+    if (count === 0) {
+      html = `<div class="ko-empty-note">${query ? I18n.t('search_no_matches', { q: query }) : I18n.t('cal_no_results')}</div>`;
+    }
+
+    return { html: `<div class="ko-match-list">${html}</div>`, count };
+  }
+
+  function _buildGroupFilterChipsHtml() {
+    let html = `<div class="ko-group-chips">
+      <button class="filter-chip filter-chip--sm${_groupFilter === null ? ' active' : ''}" data-group="">${I18n.t('all_groups')}</button>`;
+    WC2026.groups.forEach(g => {
+      html += `<button class="filter-chip filter-chip--sm${_groupFilter === g ? ' active' : ''}" data-group="${g}">${I18n.t('group_prefix')} ${I18n.groupLetter(g)}</button>`;
+    });
+    html += `</div>`;
     return html;
+  }
+
+  function _wireGroupChips(sectionEl) {
+    sectionEl.querySelectorAll('.ko-group-chips .filter-chip').forEach(btn => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        _groupFilter = btn.dataset.group || null;
+        render();
+      };
+    });
+  }
+
+  // ── Today / Yesterday featured cards ────────────────────────────────────
+  function _dateKey(d) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  function _featuredCardFor(f, dateLabel) {
+    const isGroup = f.stage === 'group';
+    let dHome, dAway, stageText;
+    if (isGroup) {
+      dHome = f.displayHome || f.home;
+      dAway = f.displayAway || f.away;
+      stageText = `${I18n.t('group_prefix')} ${f.displayGroup || f.group}`;
+    } else {
+      const resolved = Resolver.resolve(f);
+      dHome = resolved.homeResolved ? resolved.home : translatePlaceholder(resolved.home);
+      dAway = resolved.awayResolved ? resolved.away : translatePlaceholder(resolved.away);
+      stageText = I18n.stageLabel(f.stage);
+    }
+    return Live.featuredMatchCardHtml(f, dHome, dAway, dateLabel, stageText);
+  }
+
+  function _buildTodayYesterdayHTML() {
+    const now = new Date();
+    const yest = new Date(now);
+    yest.setDate(now.getDate() - 1);
+
+    const todayMatches = (WC2026.dayMap[_dateKey(now)] || []).slice().sort((a, b) => a.utc.localeCompare(b.utc));
+    const yestMatches  = (WC2026.dayMap[_dateKey(yest)] || []).slice().sort((a, b) => a.utc.localeCompare(b.utc));
+
+    const todayHtml = todayMatches.length
+      ? `<div class="fm-grid">${todayMatches.map(f => _featuredCardFor(f, I18n.t('label_today'))).join('')}</div>`
+      : `<div class="fm-empty-note">${I18n.t('no_matches_today')}</div>`;
+
+    const yestHtml = yestMatches.length
+      ? `<div class="fm-grid">${yestMatches.map(f => _featuredCardFor(f, I18n.t('label_yesterday'))).join('')}</div>`
+      : `<div class="fm-empty-note">${I18n.t('no_matches_yesterday')}</div>`;
+
+    return `
+      <div class="fm-section">
+        <div class="fm-section-title">📅 ${I18n.t('today_matches_title')}</div>
+        ${todayHtml}
+      </div>
+      <div class="fm-section">
+        <div class="fm-section-title">🕐 ${I18n.t('yesterday_matches_title')}</div>
+        ${yestHtml}
+      </div>`;
   }
 
   function render() {
@@ -197,37 +311,74 @@ const Bracket = (() => {
     const container = document.getElementById('bracketContent');
     container.innerHTML = '';
 
+    // ── Today / Yesterday ───────────────────────────────────────────────
+    const tyWrap = document.createElement('div');
+    tyWrap.className = 'fm-wrap';
+    tyWrap.innerHTML = _buildTodayYesterdayHTML();
+    container.appendChild(tyWrap);
+
+    const q = _searchQuery;
+
     // ── Standings accordion ──────────────────────────────────────────────
     const standingsSection = _makeSection(
       'standings',
       '📊',
-      I18n.t('standings_title').replace('📊 ',''),
+      I18n.t('standings_title').replace('📊 ', ''),
       _buildStandingsHTML(),
       `${I18n.t('group_prefix')} A–L`
     );
     container.appendChild(standingsSection);
 
+    // ── Group Stage matches accordion ─────────────────────────────────────
+    const divider1 = document.createElement('div');
+    divider1.className = 'ko-divider';
+    divider1.innerHTML = `<span>${I18n.t('stage_group')}</span>`;
+    container.appendChild(divider1);
+
+    const groupMatchesAll = WC2026.FIXTURES.filter(f => f.stage === 'group');
+    const groupBuilt = _buildStageHTML('group', { groupFilter: _groupFilter, query: q });
+    const groupBodyHtml = _buildGroupFilterChipsHtml() + groupBuilt.html;
+    const groupSection = _makeSection(
+      'group',
+      STAGE_ICON.group,
+      I18n.t('group_stage_matches_title'),
+      groupBodyHtml,
+      I18n.num(groupMatchesAll.length) + ' matches',
+      q ? true : undefined
+    );
+    container.appendChild(groupSection);
+    _wireGroupChips(groupSection);
+
     // ── Divider ──────────────────────────────────────────────────────────
-    const divider = document.createElement('div');
-    divider.className = 'ko-divider';
-    divider.innerHTML = `<span>${I18n.t('knockout_bracket')}</span>`;
-    container.appendChild(divider);
+    const divider2 = document.createElement('div');
+    divider2.className = 'ko-divider';
+    divider2.innerHTML = `<span>${I18n.t('knockout_bracket')}</span>`;
+    container.appendChild(divider2);
 
     // ── Stage accordions ─────────────────────────────────────────────────
     STAGE_ORDER.forEach(stage => {
       const matches = WC2026.FIXTURES.filter(f => f.stage === stage);
       if (!matches.length) return;
+      const built = _buildStageHTML(stage, { query: q });
+      if (q && built.count === 0) return; // hide empty sections while searching
       const sec = _makeSection(
         stage,
         STAGE_ICON[stage],
         I18n.t(STAGE_I18N[stage]),
-        _buildStageHTML(stage),
-        I18n.num(matches.length) + (matches.length === 1 ? ' match' : ' matches')
+        built.html,
+        I18n.num(matches.length) + (matches.length === 1 ? ' match' : ' matches'),
+        q ? true : undefined
       );
       container.appendChild(sec);
     });
   }
 
+  function onSearchChange() {
+    const el = document.getElementById('search');
+    _searchQuery = el ? el.value.toLowerCase().trim() : '';
+    render();
+  }
+
   function refreshLive() { render(); }
-  return { render, refreshLive };
+  return { render, refreshLive, onSearchChange };
 })();
