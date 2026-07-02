@@ -66,6 +66,17 @@ To change styles:
 | 3rd Place Match | Jul 18 |
 | **Final** | **Jul 19** |
 
+## ⚽ Goal Scorer Data
+
+`scripts/fetch-match-details.py` (run by a GitHub Action) fills in the "who scored, at what minute" dropdown on finished matches, from two sources:
+
+1. **football-data.org** `/v4/matches/{id}` — the account's primary source. On football-data.org's free/base tier this endpoint's `goals` field comes back empty; per-match goal events require their paid "Deep Data" add-on.
+2. **[openfootball/worldcup.json](https://github.com/openfootball/worldcup.json)** — a free, public-domain, no-API-key dataset with real scorer names + minutes for World Cup 2026, fetched straight from `raw.githubusercontent.com`. It's hand-curated roughly once a day, so it can lag behind the live score by up to ~24h, but it needs no signup and no rate-limit handling.
+
+The script tries source 1 first for anything that finished in the last 6 hours, then uses source 2 to fill in any match still missing goal data (which today is effectively everything, on the current plan). Each `data/match-details/{id}.json` file records which source it came from. Matches neither source has caught up to yet just show a "goal scorer details will appear here once available" note instead of nothing.
+
+If you want closer-to-live coverage of knockout matches too, **API-Football** (api-football.com / api-sports.io) has a genuine free tier — 100 requests/day, no credit card — that includes a fixture-events endpoint (goals + cards) on the free plan, unlike football-data.org. It needs its own signup and API key; ask if you'd like it wired in as a third source.
+
 ## 🛠️ Built With
 - Pure HTML5 / CSS3 / Vanilla JavaScript (no frameworks, no build step)
 - Hosted free on GitHub Pages

@@ -1,1 +1,1 @@
-{"id": 537425, "utcDate": "2026-07-01T01:00:00Z", "status": "FINISHED", "homeTeam": "Mexico", "awayTeam": "Ecuador", "goals": [], "bookings": []}
+{"id": 537425, "utcDate": "2026-07-01T01:00:00Z", "status": "FINISHED", "homeTeam": "Mexico", "awayTeam": "Ecuador", "goals": [{"scorer": {"name": "Juli\u00e1n Qui\u00f1ones"}, "team": {"name": "Mexico"}, "minute": 31, "type": "REGULAR"}, {"scorer": {"name": "Ra\u00fal Jim\u00e9nez"}, "team": {"name": "Mexico"}, "minute": 45, "type": "REGULAR"}], "bookings": [], "source": "openfootball"}
