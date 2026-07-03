@@ -1,1 +1,1 @@
-{"id": 537429, "utcDate": "2026-07-03T03:00:00Z", "status": "FINISHED", "homeTeam": "Switzerland", "awayTeam": "Algeria", "goals": [], "bookings": [], "source": "football-data.org"}
+{"id": 537429, "utcDate": "2026-07-03T03:00:00Z", "status": "FINISHED", "homeTeam": "Switzerland", "awayTeam": "Algeria", "goals": [{"scorer": {"name": "Breel Embolo"}, "team": {"name": "Switzerland"}, "minute": 10, "type": "REGULAR"}, {"scorer": {"name": "Dan Ndoye"}, "team": {"name": "Switzerland"}, "minute": 46, "type": "REGULAR"}], "bookings": [], "source": "openfootball"}
