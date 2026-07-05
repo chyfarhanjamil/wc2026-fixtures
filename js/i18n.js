@@ -248,10 +248,12 @@ const I18n = (() => {
 
     label_today:     { en:'Today',     bn:'আজ',        hi:'आज',       fr:"Aujourd'hui", de:'Heute',    es:'Hoy',      pt:'Hoje',     ar:'اليوم'   },
     label_yesterday: { en:'Yesterday', bn:'গতকাল',      hi:'कल',       fr:'Hier',        de:'Gestern',  es:'Ayer',     pt:'Ontem',    ar:'أمس'     },
+    label_tomorrow:  { en:'Tomorrow',  bn:'আগামীকাল',   hi:'कल',       fr:'Demain',      de:'Morgen',   es:'Mañana',   pt:'Amanhã',   ar:'غدًا'    },
     today_matches_title:    { en:"Today's Matches",      bn:'আজকের ম্যাচ',       hi:'आज के मैच',      fr:"Matchs d'aujourd'hui", de:'Heutige Spiele',   es:'Partidos de hoy',    pt:'Jogos de hoje',     ar:'مباريات اليوم' },
     yesterday_matches_title:{ en:"Yesterday's Results",   bn:'গতকালের ফলাফল',    hi:'कल के परिणाम',   fr:"Résultats d'hier",    de:'Gestrige Ergebnisse', es:'Resultados de ayer', pt:'Resultados de ontem',ar:'نتائج الأمس' },
     no_matches_today:       { en:'No matches scheduled today.', bn:'আজ কোনো ম্যাচ নেই।', hi:'आज कोई मैच नहीं।', fr:"Aucun match aujourd'hui.", de:'Heute keine Spiele.', es:'Sin partidos hoy.', pt:'Sem jogos hoje.', ar:'لا مباريات اليوم.' },
     no_matches_yesterday:   { en:'No matches were played yesterday.', bn:'গতকাল কোনো ম্যাচ হয়নি।', hi:'कल कोई मैच नहीं हुआ।', fr:"Aucun match hier.", de:'Gestern keine Spiele.', es:'Sin partidos ayer.', pt:'Sem jogos ontem.', ar:'لا مباريات أمس.' },
+    no_matches_tomorrow:    { en:'No matches scheduled tomorrow.', bn:'আগামীকাল কোনো ম্যাচ নেই।', hi:'कल कोई मैच नहीं है।', fr:"Aucun match demain.", de:'Morgen keine Spiele.', es:'Sin partidos mañana.', pt:'Sem jogos amanhã.', ar:'لا مباريات غدًا.' },
     group_stage_matches_title: { en:'Group Stage Matches', bn:'গ্রুপ পর্যায়ের ম্যাচ', hi:'ग्रुप स्टेज मैच', fr:'Matchs de la phase de groupes', de:'Spiele der Gruppenphase', es:'Partidos de fase de grupos', pt:'Jogos da fase de grupos', ar:'مباريات دور المجموعات' },
     search_no_matches: { en:'No matches found for "{q}".', bn:'"{q}" এর সাথে কোনো ম্যাচ পাওয়া যায়নি।', hi:'"{q}" से कोई मैच नहीं मिला।', fr:'Aucun match pour «{q}».', de:'Keine Spiele für „{q}".', es:'Sin partidos para "{q}".', pt:'Nenhum jogo para "{q}".', ar:'لا مباريات لـ "{q}".' },
 

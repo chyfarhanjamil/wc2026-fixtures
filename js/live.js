@@ -592,7 +592,24 @@ const Live = (() => {
 
       // Determine if API's home/away needs flipping to match our fixture's
       // home/away orientation (mirrors the logic in _ingestMatches).
-      const reversed = _canon(targetFixture.home) !== hc;
+      //
+      // CRITICAL: for KO fixtures, targetFixture.home is a placeholder like
+      // "2nd Group A" or "Winner R32 Match 73" — it will NEVER canon-match
+      // a real team name, so comparing it directly would always evaluate
+      // as "reversed" and flip every single goal to the wrong side (this
+      // was a real bug: e.g. France's own goals were showing up under
+      // Sweden). For KO fixtures we instead trust the API's home/away
+      // order as-is, exactly like _ingestMatches already does.
+      const isKOFixture =
+        !targetFixture.home ||
+        targetFixture.home.includes("Group") ||
+        targetFixture.home.includes("Winner") ||
+        targetFixture.home.includes("Best") ||
+        targetFixture.home.includes("Loser") ||
+        targetFixture.home.includes("Match");
+      const reversed = isKOFixture
+        ? false
+        : _canon(targetFixture.home) !== hc;
 
       const scorers = (d.goals || [])
         .map((g) => {
@@ -956,62 +973,46 @@ const Live = (() => {
   // and — once the match is finished — the full scorer breakdown inline
   // (no click needed). For matches that haven't kicked off or are still
   // in progress, it shows the kickoff time / live badge instead.
-  function featuredMatchCardHtml(f, dHome, dAway, dateLabel, stageLabelText) {
-    const flagHome = WC2026.FLAGS[f.home] || "";
-    const flagAway = WC2026.FLAGS[f.away] || "";
+  function miniMatchCardHtml(f, dHome, dAway, flagHome, flagAway, stageLabelText) {
     const d = forFixture(f);
     const isFinished = d && d.status === "FINISHED";
     const detail = scoreLabelDetailed(f);
     const badge = statusBadge(f);
 
-    let stateLine = "";
+    let subLine = "";
     if (isFinished && detail?.tag === "AET") {
       const bd = scoreBreakdown(f);
-      stateLine = bd?.duration === "PENALTY_SHOOTOUT" ? "After penalties" : "After extra time";
-    } else if (!isFinished) {
-      stateLine = f.tzTime;
+      subLine = bd?.duration === "PENALTY_SHOOTOUT" ? "Pens" : "AET";
     }
 
     const centerHtml = detail
-      ? `<div class="fm-score">${detail.main}</div>${detail.sub ? `<div class="fm-score-sub">${detail.sub}</div>` : ""}`
-      : `<div class="fm-score fm-score--vs">${I18n ? I18n.t("vs") : "vs"}</div>`;
+      ? `<span class="fm-mini-score-val">${detail.main}</span>${detail.sub ? `<span class="fm-mini-score-sub">${subLine || detail.sub}</span>` : ""}`
+      : `<span class="fm-mini-score-val fm-mini-score-val--vs">${I18n ? I18n.t("vs") : "vs"}</span>`;
 
-    const parts = isFinished ? _scorerBreakdownParts(f) : { state: "not-finished" };
-    let scorersHtml = "";
-    if (parts.state === "ready") {
-      scorersHtml = `<div class="fm-scorers">
-        <div class="fm-scorers-col">${parts.homeGoalsHtml}${parts.homeCardsHtml}</div>
-        <div class="fm-scorers-col fm-scorers-col--right">${parts.awayGoalsHtml}${parts.awayCardsHtml}</div>
-      </div>`;
-    } else if (parts.state === "pending") {
-      scorersHtml = `<div class="scorer-pending-note">⚽ Goal scorer details will appear here once available</div>`;
-    }
+    const timeOrBadge = isFinished || (d && d.status === "IN_PLAY") || (d && d.status === "PAUSED")
+      ? badge
+      : `<span class="fm-mini-kickoff">${f.tzTime}</span>`;
 
-    return `<div class="fm-card">
-      <div class="fm-head">
-        <span class="fm-teams-label">${dHome} <span class="fm-vs-sep">vs</span> ${dAway}</span>
-        <span class="fm-date-label">${dateLabel}</span>
+    return `<div class="fm-mini-card">
+      <div class="fm-mini-top">
+        <span class="fm-mini-stage">${stageLabelText || ""}</span>
+        <span class="fm-mini-venue">📍 ${f.venue}</span>
       </div>
-      <div class="fm-meta-row">
-        <span class="fm-competition">FIFA World Cup 2026™</span>
-        ${stateLine ? `<span class="fm-state">${stateLine}</span>` : ""}
-      </div>
-      <div class="fm-scoreboard">
-        <div class="fm-side">
-          <span class="fm-flag">${flagHome}</span>
-          <span class="fm-team-name">${dHome}</span>
+      <div class="fm-mini-teams">
+        <div class="fm-mini-side">
+          ${flagHome ? `<span class="fm-mini-flag">${flagHome}</span>` : ""}
+          <span class="fm-mini-name">${dHome}</span>
         </div>
-        <div class="fm-center">
+        <div class="fm-mini-center">
           ${centerHtml}
-          ${badge}
         </div>
-        <div class="fm-side fm-side--right">
-          <span class="fm-team-name">${dAway}</span>
-          <span class="fm-flag">${flagAway}</span>
+        <div class="fm-mini-side fm-mini-side--right">
+          <span class="fm-mini-name">${dAway}</span>
+          ${flagAway ? `<span class="fm-mini-flag">${flagAway}</span>` : ""}
         </div>
       </div>
-      ${stageLabelText ? `<div class="fm-stage">${stageLabelText}</div>` : ""}
-      ${scorersHtml}
+      <div class="fm-mini-foot">${timeOrBadge}</div>
+      ${scorerDropdownHtml(f, dHome, dAway, flagHome, flagAway)}
     </div>`;
   }
 
@@ -1028,7 +1029,7 @@ const Live = (() => {
     scoreLabelDetailed,
     scoreBlockHtml,
     scorerDropdownHtml,
-    featuredMatchCardHtml,
+    miniMatchCardHtml,
     hasKey: true,
     getTopScorers,
   };

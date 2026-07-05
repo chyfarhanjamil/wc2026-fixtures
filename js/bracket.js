@@ -257,52 +257,60 @@ const Bracket = (() => {
     });
   }
 
-  // ── Today / Yesterday featured cards ────────────────────────────────────
+  // ── Yesterday / Today / Tomorrow strip ──────────────────────────────────
   function _dateKey(d) {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
 
-  function _featuredCardFor(f, dateLabel) {
+  function _miniCardFor(f) {
     const isGroup = f.stage === 'group';
-    let dHome, dAway, stageText;
+    let dHome, dAway, stageText, flagHome, flagAway;
     if (isGroup) {
       dHome = f.displayHome || f.home;
       dAway = f.displayAway || f.away;
       stageText = `${I18n.t('group_prefix')} ${f.displayGroup || f.group}`;
+      flagHome = WC2026.FLAGS[f.home] || '';
+      flagAway = WC2026.FLAGS[f.away] || '';
     } else {
       const resolved = Resolver.resolve(f);
       dHome = resolved.homeResolved ? resolved.home : translatePlaceholder(resolved.home);
       dAway = resolved.awayResolved ? resolved.away : translatePlaceholder(resolved.away);
       stageText = I18n.stageLabel(f.stage);
+      flagHome = resolved.homeResolved ? (WC2026.FLAGS[resolved.home] || '') : '';
+      flagAway = resolved.awayResolved ? (WC2026.FLAGS[resolved.away] || '') : '';
     }
-    return Live.featuredMatchCardHtml(f, dHome, dAway, dateLabel, stageText);
+    return Live.miniMatchCardHtml(f, dHome, dAway, flagHome, flagAway, stageText);
+  }
+
+  function _dayColumnHtml(key, icon, label, matches, emptyKey) {
+    const body = matches.length
+      ? matches.map(_miniCardFor).join('')
+      : `<div class="fm-empty-note">${I18n.t(emptyKey)}</div>`;
+    return `
+      <div class="fm-day-col" data-day="${key}">
+        <div class="fm-day-col-head">
+          <span class="fm-day-col-icon">${icon}</span>
+          <span class="fm-day-col-label">${label}</span>
+        </div>
+        <div class="fm-day-col-body">${body}</div>
+      </div>`;
   }
 
   function _buildTodayYesterdayHTML() {
     const now = new Date();
-    const yest = new Date(now);
-    yest.setDate(now.getDate() - 1);
+    const yest = new Date(now); yest.setDate(now.getDate() - 1);
+    const tom  = new Date(now); tom.setDate(now.getDate() + 1);
 
-    const todayMatches = (WC2026.dayMap[_dateKey(now)] || []).slice().sort((a, b) => a.utc.localeCompare(b.utc));
-    const yestMatches  = (WC2026.dayMap[_dateKey(yest)] || []).slice().sort((a, b) => a.utc.localeCompare(b.utc));
+    const sortByTime = (a, b) => a.utc.localeCompare(b.utc);
+    const yestMatches  = (WC2026.dayMap[_dateKey(yest)] || []).slice().sort(sortByTime);
+    const todayMatches = (WC2026.dayMap[_dateKey(now)]  || []).slice().sort(sortByTime);
+    const tomMatches   = (WC2026.dayMap[_dateKey(tom)]  || []).slice().sort(sortByTime);
 
-    const todayHtml = todayMatches.length
-      ? `<div class="fm-grid">${todayMatches.map(f => _featuredCardFor(f, I18n.t('label_today'))).join('')}</div>`
-      : `<div class="fm-empty-note">${I18n.t('no_matches_today')}</div>`;
-
-    const yestHtml = yestMatches.length
-      ? `<div class="fm-grid">${yestMatches.map(f => _featuredCardFor(f, I18n.t('label_yesterday'))).join('')}</div>`
-      : `<div class="fm-empty-note">${I18n.t('no_matches_yesterday')}</div>`;
-
-    return `
-      <div class="fm-section">
-        <div class="fm-section-title">📅 ${I18n.t('today_matches_title')}</div>
-        ${todayHtml}
-      </div>
-      <div class="fm-section">
-        <div class="fm-section-title">🕐 ${I18n.t('yesterday_matches_title')}</div>
-        ${yestHtml}
-      </div>`;
+    return `<div class="fm-days-row">
+      ${_dayColumnHtml('yesterday', '🕐', I18n.t('label_yesterday'), yestMatches, 'no_matches_yesterday')}
+      ${_dayColumnHtml('today',     '📅', I18n.t('label_today'),     todayMatches, 'no_matches_today')}
+      ${_dayColumnHtml('tomorrow',  '➡️', I18n.t('label_tomorrow'),  tomMatches, 'no_matches_tomorrow')}
+    </div>`;
   }
 
   function render() {
