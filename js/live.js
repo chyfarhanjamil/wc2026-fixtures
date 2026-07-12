@@ -331,6 +331,7 @@ const Live = (() => {
     spain: "Spain",
     "cabo verde": "Cabo Verde",
     "cape verde": "Cabo Verde",
+    "cape verde islands": "Cabo Verde",
     "saudi arabia": "Saudi Arabia",
     uruguay: "Uruguay",
     france: "France",
@@ -857,7 +858,21 @@ const Live = (() => {
   // (AET) tag and Pens line when the match needed extra time or penalties.
   function scoreBlockHtml(f, vsLabel) {
     const detail = scoreLabelDetailed(f);
-    if (!detail) return `<span class="match-sep">${vsLabel || "vs"}</span>`;
+    if (!detail) {
+      const ld = forFixture(f);
+      if (ld && (ld.status === "IN_PLAY" || ld.status === "PAUSED")) {
+        // The match has kicked off but our data source hasn't reported a
+        // live score yet (the free tier updates scores with a delay, not
+        // instantly) — make that clear instead of showing the same "vs"
+        // a match that hasn't even started yet would show.
+        const note = typeof I18n !== "undefined" ? I18n.t("score_pending_live") : "Score updating…";
+        return `<span class="score-block">
+          <span class="match-score score--pending-live">–</span>
+          <span class="score-pens">${note}</span>
+        </span>`;
+      }
+      return `<span class="match-sep">${vsLabel || "vs"}</span>`;
+    }
 
     const ld = forFixture(f);
     const liveCls = ld && ld.status === "IN_PLAY" ? "score--live" : "";
