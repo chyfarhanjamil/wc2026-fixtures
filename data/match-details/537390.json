@@ -1,1 +1,1 @@
-{"id": 537390, "utcDate": "2026-07-19T19:00:00Z", "status": "FINISHED", "homeTeam": "Spain", "awayTeam": "Argentina", "goals": [], "bookings": [], "source": "football-data.org"}
+{"id": 537390, "utcDate": "2026-07-19T19:00:00Z", "status": "FINISHED", "homeTeam": "Spain", "awayTeam": "Argentina", "goals": [{"scorer": {"name": "Ferran Torres"}, "team": {"name": "Spain"}, "minute": 106, "type": "REGULAR"}], "bookings": [], "source": "openfootball"}
